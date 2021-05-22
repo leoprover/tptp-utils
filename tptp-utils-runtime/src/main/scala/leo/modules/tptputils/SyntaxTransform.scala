@@ -24,10 +24,14 @@ object SyntaxTransform {
     TPTP.FOFAnnotated(cnf.name, cnf.role, cnfStatementToFOF(cnf.formula), cnf.annotations)
   @inline final def cnfToFOF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.FOFAnnotated] = cnfs.map(cnfToFOF)
 
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TFF TO THF
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TODO: Add type declarations
+
   private[this] final def tffStatementToTHF(statement: TPTP.TFF.Statement): TPTP.THF.Statement = {
     import TPTP.{TFF, THF}
     statement match {
@@ -120,14 +124,68 @@ object SyntaxTransform {
     }
   }
 
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FOF TO TFF
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
-  private[this] final def fofStatementToTFF(statement: TPTP.FOF.Statement): TPTP.TFF.Statement = ???
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+  private[this] final def fofStatementToTFF(statement: TPTP.FOF.Statement): TPTP.TFF.Statement = {
+    import TPTP.{FOF, TFF}
+    statement match {
+      case FOF.Logical(formula) => TFF.Logical(fofLogicFormulaToTFF(formula))
+    }
+  }
+
+  private[this] final def fofLogicFormulaToTFF(formula: TPTP.FOF.Formula): TPTP.TFF.Formula = {
+    import TPTP.{FOF, TFF}
+    formula match {
+      case FOF.AtomicFormula(f, args) => TFF.AtomicFormula(f, args.map(fofTermToTFF))
+      case FOF.QuantifiedFormula(quantifier, variableList, body) =>
+        val quantifier0 = quantifier match {
+          case FOF.! => TFF.!
+          case FOF.? => TFF.?
+        }
+        TFF.QuantifiedFormula(quantifier0, variableList.map(x => (x, None)), fofLogicFormulaToTFF(body))
+      case FOF.UnaryFormula(connective, body) =>
+        val connective0 = connective match {
+          case FOF.~ => TFF.~
+        }
+        TFF.UnaryFormula(connective0, fofLogicFormulaToTFF(body))
+      case FOF.BinaryFormula(connective, left, right) =>
+        val connective0 = connective match {
+          case FOF.<=> => TFF.<=>
+          case FOF.Impl => TFF.Impl
+          case FOF.<= => TFF.<=
+          case FOF.<~> => TFF.<~>
+          case FOF.~| => TFF.~|
+          case FOF.~& => TFF.~&
+          case FOF.| => TFF.|
+          case FOF.& => TFF.&
+        }
+        TFF.BinaryFormula(connective0, fofLogicFormulaToTFF(left), fofLogicFormulaToTFF(right))
+      case FOF.Equality(left, right) => TFF.Equality(fofTermToTFF(left), fofTermToTFF(right))
+      case FOF.Inequality(left, right) => TFF.Inequality(fofTermToTFF(left), fofTermToTFF(right))
+    }
+  }
+
+  private[this] final def fofTermToTFF(term: TPTP.FOF.Term): TPTP.TFF.Term = {
+    import TPTP.{FOF, TFF}
+    term match {
+      case FOF.AtomicTerm(f, args) => TFF.AtomicTerm(f, args.map(fofTermToTFF))
+      case FOF.Variable(name) => TFF.Variable(name)
+      case FOF.DistinctObject(name) => TFF.DistinctObject(name)
+      case FOF.NumberTerm(value) => TFF.NumberTerm(value)
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CNF TO FOF
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
   private[this] final def cnfStatementToFOF(statement: TPTP.CNF.Statement): TPTP.FOF.Statement = {
     import TPTP.{CNF, FOF}
     statement match {

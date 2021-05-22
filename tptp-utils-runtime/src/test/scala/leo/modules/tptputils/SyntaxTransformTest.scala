@@ -52,6 +52,28 @@ class SyntaxTransformTest extends AnyFunSuite {
     }
   }
 
+  test("SYN000+1") {
+    val res = Parser.problem(io.Source.fromFile("/home/lex/TPTP/Problems/SYN/SYN000+1.p"))
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.FOFAnnotated(_,_,_,_) => SyntaxTransform.fofToTFF(f)} )
+    println(res2.pretty)
+    try {
+      Parser.problem(res2.pretty)
+    } catch {
+      case e: TPTPParseException => fail(e.toString)
+    }
+  }
+
+  test("SYN000+2") {
+    val res = Parser.problem(io.Source.fromFile("/home/lex/TPTP/Problems/SYN/SYN000+2.p"))
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.FOFAnnotated(_,_,_,_) => SyntaxTransform.fofToTFF(f)} )
+    println(res2.pretty)
+    try {
+      Parser.problem(res2.pretty)
+    } catch {
+      case e: TPTPParseException => fail(e.toString)
+    }
+  }
+
   test("SYN000-1") {
     val res = Parser.problem(io.Source.fromFile("/home/lex/TPTP/Problems/SYN/SYN000-1.p"))
     val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToFOF(f)} )
