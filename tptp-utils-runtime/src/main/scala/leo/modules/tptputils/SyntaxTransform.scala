@@ -27,6 +27,7 @@ object SyntaxTransform {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // TFF TO THF
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // TODO: Add type declarations
   private[this] final def tffStatementToTHF(statement: TPTP.TFF.Statement): TPTP.THF.Statement = {
     import TPTP.{TFF, THF}
     statement match {
@@ -134,32 +135,58 @@ object SyntaxTransform {
     }
   }
 
+  type CNFFreeVars = Set[String]
   private[this] final def cnfLogicFormulaToFOF(formula: TPTP.CNF.Formula): TPTP.FOF.Formula = {
     import TPTP.{CNF, FOF}
     formula match {
-      case Seq() => FOF.AtomicFormula("$false", Seq.empty)
+      case Seq() => FOF.AtomicFormula("$false", Seq.empty) // Should never happen, but just to be on the safe side
       case _ =>
-        val transformedLiterals = formula.map(cnfLiteralToFOF)
-        transformedLiterals.reduceRight(FOF.BinaryFormula(FOF.|, _, _))
+        val (transformedLiterals, freeVars) = mapAndAccumulate(formula, cnfLiteralToFOF)
+        val intermediate = transformedLiterals.reduceRight(FOF.BinaryFormula(FOF.|, _, _))
+        if (freeVars.isEmpty) intermediate
+        else FOF.QuantifiedFormula(FOF.!, freeVars.toSeq, intermediate)
     }
   }
 
-  private[this] final def cnfLiteralToFOF(literal: TPTP.CNF.Literal): TPTP.FOF.Formula = {
+  private[this] final def cnfLiteralToFOF(literal: TPTP.CNF.Literal): (TPTP.FOF.Formula, CNFFreeVars) = {
     import TPTP.{CNF, FOF}
     literal match {
-      case CNF.PositiveAtomic(CNF.AtomicFormula(f, args)) => FOF.AtomicFormula(f, args.map(cnfTermToFOF))
-      case CNF.NegativeAtomic(CNF.AtomicFormula(f, args)) => FOF.UnaryFormula(FOF.~, FOF.AtomicFormula(f, args.map(cnfTermToFOF)))
-      case CNF.Equality(left, right) => FOF.Equality(cnfTermToFOF(left), cnfTermToFOF(right))
-      case CNF.Inequality(left, right) => FOF.Inequality(cnfTermToFOF(left), cnfTermToFOF(right))
+      case CNF.PositiveAtomic(CNF.AtomicFormula(f, args)) =>
+        val (translatedArgs, freeVars) = mapAndAccumulate(args, cnfTermToFOF)
+        (FOF.AtomicFormula(f, translatedArgs), freeVars)
+      case CNF.NegativeAtomic(CNF.AtomicFormula(f, args)) =>
+        val (translatedArgs, freeVars) = mapAndAccumulate(args, cnfTermToFOF)
+        (FOF.UnaryFormula(FOF.~, FOF.AtomicFormula(f, translatedArgs)), freeVars)
+      case CNF.Equality(left, right) =>
+        val (translatedLeft, fvsLeft) = cnfTermToFOF(left)
+        val (translatedRight, fvsRight) = cnfTermToFOF(right)
+        (FOF.Equality(translatedLeft, translatedRight), fvsLeft union fvsRight)
+      case CNF.Inequality(left, right) =>
+        val (translatedLeft, fvsLeft) = cnfTermToFOF(left)
+        val (translatedRight, fvsRight) = cnfTermToFOF(right)
+        (FOF.Inequality(translatedLeft, translatedRight), fvsLeft union fvsRight)
     }
   }
 
-  private[this] final def cnfTermToFOF(term: TPTP.CNF.Term): TPTP.FOF.Term = {
+  private[this] final def cnfTermToFOF(term: TPTP.CNF.Term): (TPTP.FOF.Term, CNFFreeVars) = {
     import TPTP.{CNF, FOF}
     term match {
-      case CNF.AtomicTerm(f, args) => FOF.AtomicTerm(f, args.map(cnfTermToFOF))
-      case CNF.Variable(name) => FOF.Variable(name)
-      case CNF.DistinctObject(name) => FOF.DistinctObject(name)
+      case CNF.AtomicTerm(f, args) =>
+        val (translatedArgs, freeVars) = mapAndAccumulate(args, cnfTermToFOF)
+        (FOF.AtomicTerm(f, translatedArgs), freeVars)
+      case CNF.Variable(name) => (FOF.Variable(name), Set(name))
+      case CNF.DistinctObject(name) => (FOF.DistinctObject(name), Set.empty)
     }
+  }
+
+  private[this] final def mapAndAccumulate[A,B,C](list: Seq[A], f: A => (B, Set[C])): (Seq[B], Set[C]) = {
+    var mapResult: Seq[B] = Seq.empty
+    var accResult: Set[C] = Set.empty
+    list foreach { x =>
+      val fResult = f(x)
+      mapResult = mapResult :+ fResult._1
+      accResult = accResult union fResult._2
+    }
+    (mapResult, accResult)
   }
 }
