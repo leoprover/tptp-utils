@@ -3,6 +3,8 @@ package leo.modules.tptputils
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.FOFAnnotated
 
+import scala.collection.immutable.{AbstractSeq, LinearSeq}
+
 object SyntaxTransform {
   @inline final def tffToTHF(tff: TPTP.TFFAnnotated): TPTP.THFAnnotated =
     TPTP.THFAnnotated(tff.name, tff.role, tffStatementToTHF(tff.formula), tff.annotations)
@@ -19,7 +21,7 @@ object SyntaxTransform {
   @inline final def cnfToTFF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.TFFAnnotated] = cnfs.map(cnfToTFF)
 
   @inline final def cnfToFOF(cnf: TPTP.CNFAnnotated): TPTP.FOFAnnotated =
-    TPTP.FOFAnnotated(cnf.name, cnf.role, cnfStatementToTFF(cnf.formula), cnf.annotations)
+    TPTP.FOFAnnotated(cnf.name, cnf.role, cnfStatementToFOF(cnf.formula), cnf.annotations)
   @inline final def cnfToFOF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.FOFAnnotated] = cnfs.map(cnfToFOF)
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +49,7 @@ object SyntaxTransform {
           case (name, Some(typ)) => (name, tffTypeToTHF(typ))
         }
         THF.QuantifiedFormula(quantifier0, varList0, tffLogicFormulaToTHF(body))
-      case TFF.UnaryFormula(connective, body) => ???
+      case TFF.UnaryFormula(connective, body) =>
         THF.UnaryFormula(tffUnaryConnectiveToTHF(connective), tffLogicFormulaToTHF(body))
       case TFF.BinaryFormula(connective, left, right) =>
         THF.BinaryFormula(tffBinaryConnectiveToTHF(connective), tffLogicFormulaToTHF(left), tffLogicFormulaToTHF(right))
@@ -125,5 +127,39 @@ object SyntaxTransform {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CNF TO FOF
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
-  private[this] final def cnfStatementToTFF(statement: TPTP.CNF.Statement): TPTP.FOF.Statement = ???
+  private[this] final def cnfStatementToFOF(statement: TPTP.CNF.Statement): TPTP.FOF.Statement = {
+    import TPTP.{CNF, FOF}
+    statement match {
+      case CNF.Logical(formula) => FOF.Logical(cnfLogicFormulaToFOF(formula))
+    }
+  }
+
+  private[this] final def cnfLogicFormulaToFOF(formula: TPTP.CNF.Formula): TPTP.FOF.Formula = {
+    import TPTP.{CNF, FOF}
+    formula match {
+      case Seq() => FOF.AtomicFormula("$false", Seq.empty)
+      case _ =>
+        val transformedLiterals = formula.map(cnfLiteralToFOF)
+        transformedLiterals.reduceRight(FOF.BinaryFormula(FOF.|, _, _))
+    }
+  }
+
+  private[this] final def cnfLiteralToFOF(literal: TPTP.CNF.Literal): TPTP.FOF.Formula = {
+    import TPTP.{CNF, FOF}
+    literal match {
+      case CNF.PositiveAtomic(CNF.AtomicFormula(f, args)) => FOF.AtomicFormula(f, args.map(cnfTermToFOF))
+      case CNF.NegativeAtomic(CNF.AtomicFormula(f, args)) => FOF.UnaryFormula(FOF.~, FOF.AtomicFormula(f, args.map(cnfTermToFOF)))
+      case CNF.Equality(left, right) => FOF.Equality(cnfTermToFOF(left), cnfTermToFOF(right))
+      case CNF.Inequality(left, right) => FOF.Inequality(cnfTermToFOF(left), cnfTermToFOF(right))
+    }
+  }
+
+  private[this] final def cnfTermToFOF(term: TPTP.CNF.Term): TPTP.FOF.Term = {
+    import TPTP.{CNF, FOF}
+    term match {
+      case CNF.AtomicTerm(f, args) => FOF.AtomicTerm(f, args.map(cnfTermToFOF))
+      case CNF.Variable(name) => FOF.Variable(name)
+      case CNF.DistinctObject(name) => FOF.DistinctObject(name)
+    }
+  }
 }
