@@ -41,14 +41,21 @@ class SyntaxTransformTest extends AnyFunSuite {
       case e: TPTPParseException => fail(e.toString)
     }
   }
+
   test("SYN000_4") {
     val res = Parser.problem(io.Source.fromFile("/home/lex/TPTP/Problems/SYN/SYN000_4.p"))
+    println(res.pretty)
+    println("########################")
+    println(res.formulas.map(_.toString).mkString("\n"))
+    println("########################")
     val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)} )
     println(res2.pretty)
+    println("########################")
+    println(res2.formulas.map(_.toString).mkString("\n"))
     try {
       Parser.problem(res2.pretty)
     } catch {
-      case e: TPTPParseException => fail(e.toString)
+      case e: TPTPParseException => fail(s"${e.line}:${e.offset} - ${e.toString}")
     }
   }
 

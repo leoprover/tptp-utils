@@ -1,9 +1,6 @@
 package leo.modules.tptputils
 
 import leo.datastructures.TPTP
-import leo.datastructures.TPTP.FOFAnnotated
-
-import scala.collection.immutable.{AbstractSeq, LinearSeq}
 
 object SyntaxTransform {
   @inline final def tffToTHF(tff: TPTP.TFFAnnotated): TPTP.THFAnnotated =
