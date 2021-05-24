@@ -1,6 +1,7 @@
 package leo.modules.tptputils
 
 import leo.datastructures.TPTP
+import leo.datastructures.TPTP.CNF
 
 object SyntaxTransform {
   @inline final def tffToTHF(tff: TPTP.TFFAnnotated): TPTP.THFAnnotated =
@@ -8,18 +9,32 @@ object SyntaxTransform {
   @inline final def tffToTHF(tffs: Seq[TPTP.TFFAnnotated]): Seq[TPTP.THFAnnotated] = tffs.map(tffToTHF)
   @inline final def fofToTHF(fof: TPTP.FOFAnnotated): TPTP.THFAnnotated = tffToTHF(fofToTFF(fof))
   @inline final def fofToTHF(fofs: Seq[TPTP.FOFAnnotated]): Seq[TPTP.THFAnnotated] = fofs.map(fofToTHF)
+  @inline final def tcfToTHF(tcf: TPTP.TCFAnnotated): TPTP.THFAnnotated = tffToTHF(tcfToTFF(tcf))
+  @inline final def tcfToTHF(tcfs: Seq[TPTP.TCFAnnotated]): Seq[TPTP.THFAnnotated] = tcfs.map(tcfToTHF)
   @inline final def cnfToTHF(cnf: TPTP.CNFAnnotated): TPTP.THFAnnotated = fofToTHF(cnfToFOF(cnf))
   @inline final def cnfToTHF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.THFAnnotated] = cnfs.map(cnfToTHF)
 
   @inline final def fofToTFF(fof: TPTP.FOFAnnotated): TPTP.TFFAnnotated =
     TPTP.TFFAnnotated(fof.name, fof.role, fofStatementToTFF(fof.formula), fof.annotations)
   @inline final def fofToTFF(fofs: Seq[TPTP.FOFAnnotated]): Seq[TPTP.TFFAnnotated] = fofs.map(fofToTFF)
+  @inline final def tcfToTFF(tcf: TPTP.TCFAnnotated): TPTP.TFFAnnotated =
+    TPTP.TFFAnnotated(tcf.name, tcf.role, tcfStatementToTFF(tcf.formula), tcf.annotations)
+  @inline final def tcfToTFF(tcfs: Seq[TPTP.TCFAnnotated]): Seq[TPTP.TFFAnnotated] = tcfs.map(tcfToTFF)
   @inline final def cnfToTFF(cnf: TPTP.CNFAnnotated): TPTP.TFFAnnotated = fofToTFF(cnfToFOF(cnf))
   @inline final def cnfToTFF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.TFFAnnotated] = cnfs.map(cnfToTFF)
 
   @inline final def cnfToFOF(cnf: TPTP.CNFAnnotated): TPTP.FOFAnnotated =
     TPTP.FOFAnnotated(cnf.name, cnf.role, cnfStatementToFOF(cnf.formula), cnf.annotations)
   @inline final def cnfToFOF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.FOFAnnotated] = cnfs.map(cnfToFOF)
+
+  @inline final def cnfToTCF(cnf: TPTP.CNFAnnotated): TPTP.TCFAnnotated = {
+    cnf.formula match {
+      case CNF.Logical(f) =>
+        TPTP.TCFAnnotated(cnf.name, cnf.role, TPTP.TCF.Logical(TPTP.TCF.Formula(Seq.empty, f)), cnf.annotations)
+    }
+  }
+
+  @inline final def cnfToTCF(cnfs: Seq[TPTP.CNFAnnotated]): Seq[TPTP.TCFAnnotated] = cnfs.map(cnfToTCF)
 
   final def transformAnnotatedFormula(goalLanguage: TPTP.AnnotatedFormula.FormulaType.FormulaType,
                                       annotatedFormula: TPTP.AnnotatedFormula): TPTP.AnnotatedFormula = {
@@ -39,8 +54,8 @@ object SyntaxTransform {
           }
         case f@TPTP.TCFAnnotated(_, _, _, _) =>
           (goalLanguage: @unchecked) match {
-          case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.THF => ???
-          case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => ???
+          case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.THF => tcfToTHF(f)
+          case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => tcfToTFF(f)
           case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => f
         }
         case f@TPTP.CNFAnnotated(_, _, _, _) =>
@@ -48,7 +63,7 @@ object SyntaxTransform {
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.THF => cnfToTHF(f)
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => cnfToTFF(f)
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => cnfToFOF(f)
-            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => ???
+            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => cnfToTCF(f)
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.CNF => f
           }
       }
@@ -225,6 +240,23 @@ object SyntaxTransform {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // FOF TO TFF
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private[this] final def tcfStatementToTFF(statement: TPTP.TCF.Statement): TPTP.TFF.Statement = {
+    import TPTP.{TCF, TFF}
+    statement match {
+      case TCF.Typing(atom, typ) => TFF.Typing(atom, typ)
+      case TCF.Logical(formula) => TFF.Logical(tcfLogicFormulaToTFF(formula))
+    }
+  }
+
+  private[this] final def tcfLogicFormulaToTFF(statement: TPTP.TCF.Formula): TPTP.TFF.Formula = {
+    ???
+  }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   // CNF TO FOF
