@@ -174,7 +174,7 @@ object SyntaxTransform {
     typ match {
       case TFF.AtomicType(name, args) => THF.FunctionTerm(name, args.map(tffTypeToTHF))
       case TFF.MappingType(left, right) =>
-        left.foldRight[THF.Formula](tffTypeToTHF(right)) { case (arg, expr) => THF.BinaryFormula(THF.FunTyConstructor, expr, tffTypeToTHF(arg)) }
+        left.foldRight[THF.Formula](tffTypeToTHF(right)) { case (arg, expr) => THF.BinaryFormula(THF.FunTyConstructor, tffTypeToTHF(arg), expr) }
       case TFF.QuantifiedType(variables, body) =>
         val varList0: Seq[THF.TypedVariable] = variables.map {
           case (name, None) => (name, THF.FunctionTerm("$tType", Seq.empty))
