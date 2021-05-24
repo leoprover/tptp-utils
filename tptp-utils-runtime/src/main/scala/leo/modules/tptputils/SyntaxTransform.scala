@@ -3,6 +3,8 @@ package leo.modules.tptputils
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.CNF
 
+import scala.collection.immutable.{AbstractSeq, LinearSeq}
+
 object SyntaxTransform {
   @inline final def tffToTHF(tff: TPTP.TFFAnnotated): TPTP.THFAnnotated =
     TPTP.THFAnnotated(tff.name, tff.role, tffStatementToTHF(tff.formula), tff.annotations)
@@ -254,8 +256,20 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def tcfLogicFormulaToTFF(statement: TPTP.TCF.Formula): TPTP.TFF.Formula = {
-    ???
+  private[this] final def tcfLogicFormulaToTFF(formula: TPTP.TCF.Formula): TPTP.TFF.Formula = {
+    import TPTP.{TCF, TFF}
+    formula.clause match {
+      case Seq() => TPTP.TFF.AtomicFormula("$false", Seq.empty)
+      case _ =>
+        val (transformedLiterals, freeVars) = mapAndAccumulate(formula.clause, cnfLiteralToFOF)
+        val transformedLiterals0 = transformedLiterals.map(fofLogicFormulaToTFF)
+        val intermediate = transformedLiterals0.reduceRight(TFF.BinaryFormula(TFF.|, _, _))
+        if (freeVars.isEmpty) intermediate
+        else {
+          val freeVars0: Seq[TFF.TypedVariable] = (freeVars diff formula.variables.map(_._1).toSet).map(x => (x, None)).toSeq
+          TFF.QuantifiedFormula(TFF.!, formula.variables ++ freeVars0, intermediate)
+        }
+    }
   }
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
