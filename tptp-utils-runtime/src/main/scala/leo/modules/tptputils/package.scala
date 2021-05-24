@@ -9,21 +9,24 @@ package object tptputils {
   final def isMoreGeneralThan(a: FormulaType.FormulaType, b: FormulaType.FormulaType): Boolean = {
     import FormulaType._
     a match {
-      case THF => true
+      case THF => b match {
+        case TPI => false
+        case _ => true
+      }
       case TFF => b match {
-        case THF => false
+        case THF | TPI => false
         case _ => true
       }
       case FOF => b match {
-        case THF | TFF | TCF => false
-        case _ => true
+        case FOF | CNF => true
+        case _ => false
       }
       case TCF => b match {
-        case THF | TFF | FOF => false
-        case _ => true
+        case TCF | CNF => true
+        case _ => false
       }
       case CNF => b match {
-        case CNF | TPI => true
+        case CNF => true
         case _ => false
       }
       case TPI => false

@@ -69,102 +69,6 @@ object SyntaxTransform {
       val specs = generateMissingTypeDeclarations(problem.formulas)
       TPTP.Problem(problem.includes, specs ++ transformedFormulas)
     } else TPTP.Problem(problem.includes, transformedFormulas)
-
-  }
-
-  private[this] def generateMissingTypeDeclarations(originalFormulas: Seq[TPTP.AnnotatedFormula]): Seq[TPTP.AnnotatedFormula] = {
-    import scala.collection.mutable
-    val symbolsWithType: mutable.Set[String] = mutable.Set.empty
-    val symbolsMap: mutable.Map[String, TPTP.AnnotatedFormula] = mutable.Map.empty
-    originalFormulas foreach {
-      case TPTP.THFAnnotated(_, "type", TPTP.THF.Typing(s, _), _) => symbolsWithType += s
-      case TPTP.TFFAnnotated(_, "type", TPTP.TFF.Typing(s, _), _) => symbolsWithType += s
-      case f =>
-        if (!Seq(TPTP.AnnotatedFormula.FormulaType.THF, TPTP.AnnotatedFormula.FormulaType.TPI).contains(f.formulaType)) {
-          val symbolsInFormula = f.symbols.filterNot(s => s.startsWith("\"") || s.startsWith("$")) //exclude distinct objects and defined symbols
-          for (s <- symbolsInFormula) {
-            if (!symbolsMap.isDefinedAt(s)) symbolsMap += (s -> f)
-          }
-        }
-    }
-    val unspecifiedSymbols = (symbolsMap.keySet diff symbolsWithType).toSeq
-    val freshTypeSpecifications: mutable.Map[String, TPTP.THFAnnotated] = mutable.Map.empty
-    unspecifiedSymbols.map { s =>
-      val ty = getTypeFromSymbolOccurence(s, symbolsMap(s))
-      val spec = TPTP.THF.Typing(s, ty)
-      TPTP.THFAnnotated(s"${s}_type", "type", spec, None)
-    }
-  }
-
-  private[this] def getTypeFromSymbolOccurence(symbol: String, formula: TPTP.AnnotatedFormula): TPTP.THF.Type = {
-    import TPTP.THF
-    formula match {
-      case TPTP.TFFAnnotated(_, _, TPTP.TFF.Logical(formula), _) => ???
-      case TPTP.FOFAnnotated(_, _, TPTP.FOF.Logical(formula), _) =>
-        val res = getTypeFromFOFFormula(symbol, formula)
-        if (res.isDefined) res.get
-        else throw new TPTPTransformException("")
-      case TPTP.TCFAnnotated(_, _, TPTP.TCF.Logical(formula), _) => ???
-      case TPTP.CNFAnnotated(_, _, TPTP.CNF.Logical(formula), _) => ???
-      case _ => throw new TPTPTransformException("")
-    }
-  }
-  private[this] def getTypeFromFOFFormula(symbol: String, formula: TPTP.FOF.Formula): Option[TPTP.THF.Type] = {
-    import TPTP.FOF
-    formula match {
-      case FOF.AtomicFormula(f, args) =>
-        if (f == symbol) Some(simplePredType(args.size))
-        else {
-          val argsIt = args.iterator
-          var result: Option[TPTP.THF.Type] = None
-          while (argsIt.hasNext && result.isEmpty) {
-            result = getTypeFromFOFTerm(symbol, argsIt.next())
-          }
-          result
-        }
-      case FOF.QuantifiedFormula(_, _, body) => getTypeFromFOFFormula(symbol, body)
-      case FOF.UnaryFormula(_, body) => getTypeFromFOFFormula(symbol, body)
-      case FOF.BinaryFormula(_, left, right) =>
-        val leftResult = getTypeFromFOFFormula(symbol, left)
-        if (leftResult.isDefined) leftResult
-        else getTypeFromFOFFormula(symbol, right)
-      case FOF.Equality(left, right) =>
-        val leftResult = getTypeFromFOFTerm(symbol, left)
-        if (leftResult.isDefined) leftResult
-        else getTypeFromFOFTerm(symbol, right)
-      case FOF.Inequality(left, right) =>
-        val leftResult = getTypeFromFOFTerm(symbol, left)
-        if (leftResult.isDefined) leftResult
-        else getTypeFromFOFTerm(symbol, right)
-    }
-  }
-  private[this] def getTypeFromFOFTerm(symbol: String, term: TPTP.FOF.Term): Option[TPTP.THF.Type] = {
-    import TPTP.FOF
-    term match {
-      case FOF.AtomicTerm(f, args) =>
-        if (f == symbol) Some(simpleFunType(args.size))
-        else {
-          val argsIt = args.iterator
-          var result: Option[TPTP.THF.Type] = None
-          while (argsIt.hasNext && result.isEmpty) {
-            result = getTypeFromFOFTerm(symbol, argsIt.next())
-          }
-          result
-        }
-      case FOF.Variable(_) => None
-      case FOF.DistinctObject(_) => None
-      case FOF.NumberTerm(_) => None
-    }
-  }
-
-
-  private[this] def simplePredType(n: Int): TPTP.THF.Type = {
-    val typesAsList: Seq[TPTP.THF.Type] = Seq.fill(n)(TPTP.THF.FunctionTerm("$i", Seq.empty)) :+ TPTP.THF.FunctionTerm("$o", Seq.empty)
-    typesAsList.reduceRight { TPTP.THF.BinaryFormula(TPTP.THF.FunTyConstructor, _, _) }
-  }
-  private[this] def simpleFunType(n: Int): TPTP.THF.Type = {
-    val typesAsList: Seq[TPTP.THF.Type] = Seq.fill(n)(TPTP.THF.FunctionTerm("$i", Seq.empty)) :+ TPTP.THF.FunctionTerm("$i", Seq.empty)
-    typesAsList.reduceRight { TPTP.THF.BinaryFormula(TPTP.THF.FunTyConstructor, _, _) }
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -388,4 +292,235 @@ object SyntaxTransform {
     }
     (mapResult, accResult)
   }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Generate missing type declarations
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  private[this] def generateMissingTypeDeclarations(originalFormulas: Seq[TPTP.AnnotatedFormula]): Seq[TPTP.AnnotatedFormula] = {
+    import scala.collection.mutable
+    val symbolsWithType: mutable.Set[String] = mutable.Set.empty
+    val symbolsMap: mutable.Map[String, TPTP.AnnotatedFormula] = mutable.Map.empty
+    originalFormulas foreach {
+      case TPTP.THFAnnotated(_, "type", TPTP.THF.Typing(s, _), _) => symbolsWithType += s
+      case TPTP.TFFAnnotated(_, "type", TPTP.TFF.Typing(s, _), _) => symbolsWithType += s
+      case f =>
+        if (!Seq(TPTP.AnnotatedFormula.FormulaType.THF, TPTP.AnnotatedFormula.FormulaType.TPI).contains(f.formulaType)) {
+          val symbolsInFormula = f.symbols.filterNot(s => s.startsWith("\"") || s.startsWith("$")) //exclude distinct objects and defined symbols
+          for (s <- symbolsInFormula) {
+            if (!symbolsMap.isDefinedAt(s)) symbolsMap += (s -> f)
+          }
+        }
+    }
+    val unspecifiedSymbols = (symbolsMap.keySet diff symbolsWithType).toSeq
+    val freshTypeSpecifications: mutable.Map[String, TPTP.THFAnnotated] = mutable.Map.empty
+    unspecifiedSymbols.map { s =>
+      val ty = getTypeFromSymbolOccurence(s, symbolsMap(s))
+      val spec = TPTP.THF.Typing(s, ty)
+      TPTP.THFAnnotated(s"${s}_type", "type", spec, None)
+    }
+  }
+
+  private[this] def getTypeFromSymbolOccurence(symbol: String, formula: TPTP.AnnotatedFormula): TPTP.THF.Type = {
+    import TPTP.THF
+    val result = formula match {
+      case TPTP.TFFAnnotated(_, _, TPTP.TFF.Logical(formula), _) => getTypeFromTFFFormula(symbol, formula)
+      case TPTP.FOFAnnotated(_, _, TPTP.FOF.Logical(formula), _) => getTypeFromFOFFormula(symbol, formula)
+      case TPTP.TCFAnnotated(_, _, TPTP.TCF.Logical(formula), _) => getTypeFromTCFFormula(symbol, formula)
+      case TPTP.CNFAnnotated(_, _, TPTP.CNF.Logical(formula), _) => getTypeFromCNFFormula(symbol, formula)
+      case _ => throw new TPTPTransformException("unexpected")
+    }
+    if (result.isDefined) result.get
+    else throw new TPTPTransformException("unexpected")
+  }
+
+  private[this] def getTypeFromTFFFormula(symbol: String, formula: TPTP.TFF.Formula): Option[TPTP.THF.Type] = {
+    import TPTP.TFF
+    formula match {
+      case TFF.AtomicFormula(f, args) =>
+        if (f == symbol) Some(simplePredType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromTFFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case TFF.QuantifiedFormula(_, _, body) => getTypeFromTFFFormula(symbol, body)
+      case TFF.UnaryFormula(_, body) => getTypeFromTFFFormula(symbol, body)
+      case TFF.BinaryFormula(_, left, right) =>
+        val leftResult = getTypeFromTFFFormula(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromTFFFormula(symbol, right)
+      case TFF.Equality(left, right) =>
+        val leftResult = getTypeFromTFFTerm(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromTFFTerm(symbol, right)
+      case TFF.Inequality(left, right) =>
+        val leftResult = getTypeFromTFFTerm(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromTFFTerm(symbol, right)
+      case TFF.FormulaVariable(name) => None
+      case TFF.ConditionalFormula(condition, thn, els) =>
+        val condResult = getTypeFromTFFFormula(symbol, condition)
+        if (condResult.isDefined) condResult
+        else {
+          val thnResult = getTypeFromTFFTerm(symbol, thn)
+          if (thnResult.isDefined) thnResult
+          else getTypeFromTFFTerm(symbol, els)
+        }
+      case TFF.LetFormula(_, _, body) => getTypeFromTFFTerm(symbol, body)
+      case TFF.Assignment(lhs, rhs) => None
+    }
+  }
+
+  private[this] def getTypeFromTFFTerm(symbol: String, term: TPTP.TFF.Term): Option[TPTP.THF.Type] = {
+    import TPTP.TFF
+    term match {
+      case TFF.AtomicTerm(f, args) =>
+        if (f == symbol) Some(simpleFunType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromTFFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case TFF.Variable(_) => None
+      case TFF.DistinctObject(_) => None
+      case TFF.NumberTerm(_) => None
+      case TFF.Tuple(elements) =>
+        val elementsIt = elements.iterator
+        var result: Option[TPTP.THF.Type] = None
+        while (elementsIt.hasNext && result.isEmpty) {
+          result = getTypeFromTFFTerm(symbol, elementsIt.next())
+        }
+        result
+      case TFF.FormulaTerm(formula) => getTypeFromTFFFormula(symbol, formula)
+    }
+  }
+
+  private[this] def getTypeFromFOFFormula(symbol: String, formula: TPTP.FOF.Formula): Option[TPTP.THF.Type] = {
+    import TPTP.FOF
+    formula match {
+      case FOF.AtomicFormula(f, args) =>
+        if (f == symbol) Some(simplePredType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromFOFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case FOF.QuantifiedFormula(_, _, body) => getTypeFromFOFFormula(symbol, body)
+      case FOF.UnaryFormula(_, body) => getTypeFromFOFFormula(symbol, body)
+      case FOF.BinaryFormula(_, left, right) =>
+        val leftResult = getTypeFromFOFFormula(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromFOFFormula(symbol, right)
+      case FOF.Equality(left, right) =>
+        val leftResult = getTypeFromFOFTerm(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromFOFTerm(symbol, right)
+      case FOF.Inequality(left, right) =>
+        val leftResult = getTypeFromFOFTerm(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromFOFTerm(symbol, right)
+    }
+  }
+  private[this] def getTypeFromFOFTerm(symbol: String, term: TPTP.FOF.Term): Option[TPTP.THF.Type] = {
+    import TPTP.FOF
+    term match {
+      case FOF.AtomicTerm(f, args) =>
+        if (f == symbol) Some(simpleFunType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromFOFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case FOF.Variable(_) => None
+      case FOF.DistinctObject(_) => None
+      case FOF.NumberTerm(_) => None
+    }
+  }
+
+  private[this] def getTypeFromTCFFormula(symbol: String, formula: TPTP.TCF.Formula): Option[TPTP.THF.Type] = {
+    getTypeFromCNFFormula(symbol, formula.clause)
+  }
+
+  private[this] def getTypeFromCNFFormula(symbol: String, formula: TPTP.CNF.Formula): Option[TPTP.THF.Type] = {
+    val litsIt = formula.iterator
+    var result: Option[TPTP.THF.Type] = None
+    while (litsIt.hasNext && result.isEmpty) {
+      result = getTypeFromCNFLiteral(symbol, litsIt.next())
+    }
+    result
+  }
+  private[this] def getTypeFromCNFLiteral(symbol: String, literal: TPTP.CNF.Literal): Option[TPTP.THF.Type] = {
+    import TPTP.CNF
+    literal match {
+      case CNF.PositiveAtomic(CNF.AtomicFormula(f, args)) =>
+        if (f == symbol) Some(simplePredType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromCNFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case CNF.NegativeAtomic(CNF.AtomicFormula(f, args)) =>
+        if (f == symbol) Some(simplePredType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromCNFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case CNF.Equality(left, right) =>
+        val leftResult = getTypeFromCNFTerm(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromCNFTerm(symbol, right)
+      case CNF.Inequality(left, right) =>
+        val leftResult = getTypeFromCNFTerm(symbol, left)
+        if (leftResult.isDefined) leftResult
+        else getTypeFromCNFTerm(symbol, right)
+    }
+  }
+  private[this] def getTypeFromCNFTerm(symbol: String, term: TPTP.CNF.Term): Option[TPTP.THF.Type] = {
+    import TPTP.CNF
+    term match {
+      case CNF.AtomicTerm(f, args) =>
+        if (f == symbol) Some(simpleFunType(args.size))
+        else {
+          val argsIt = args.iterator
+          var result: Option[TPTP.THF.Type] = None
+          while (argsIt.hasNext && result.isEmpty) {
+            result = getTypeFromCNFTerm(symbol, argsIt.next())
+          }
+          result
+        }
+      case CNF.Variable(_) => None
+      case CNF.DistinctObject(_) => None
+    }
+  }
+
+  private[this] def simplePredType(n: Int): TPTP.THF.Type = {
+    val typesAsList: Seq[TPTP.THF.Type] = Seq.fill(n)(TPTP.THF.FunctionTerm("$i", Seq.empty)) :+ TPTP.THF.FunctionTerm("$o", Seq.empty)
+    typesAsList.reduceRight { TPTP.THF.BinaryFormula(TPTP.THF.FunTyConstructor, _, _) }
+  }
+  private[this] def simpleFunType(n: Int): TPTP.THF.Type = {
+    val typesAsList: Seq[TPTP.THF.Type] = Seq.fill(n)(TPTP.THF.FunctionTerm("$i", Seq.empty)) :+ TPTP.THF.FunctionTerm("$i", Seq.empty)
+    typesAsList.reduceRight { TPTP.THF.BinaryFormula(TPTP.THF.FunTyConstructor, _, _) }
+  }
+  /////////////////// Generate type declarations END /////////////////////////////
 }
