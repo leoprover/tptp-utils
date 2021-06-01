@@ -172,7 +172,8 @@ object SyntaxTransform {
   private[this] final def tffTypeToTHF(typ: TPTP.TFF.Type): TPTP.THF.Type = {
     import TPTP.{TFF, THF}
     typ match {
-      case TFF.AtomicType(name, args) => THF.FunctionTerm(name, args.map(tffTypeToTHF))
+      case TFF.AtomicType(name, args) =>
+        args.foldLeft[THF.Type](THF.FunctionTerm(name, Seq.empty)) { case (expr, arg) => THF.BinaryFormula(THF.App, expr, tffTypeToTHF(arg)) }
       case TFF.MappingType(left, right) =>
         left.foldRight[THF.Formula](tffTypeToTHF(right)) { case (arg, expr) => THF.BinaryFormula(THF.FunTyConstructor, tffTypeToTHF(arg), expr) }
       case TFF.QuantifiedType(variables, body) =>
