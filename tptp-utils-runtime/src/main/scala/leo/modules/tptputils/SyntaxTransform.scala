@@ -132,6 +132,18 @@ object SyntaxTransform {
         val binding0 = binding.map { case (lhs, rhs) => (tffTermToTHF(lhs), tffTermToTHF(rhs)) }
         THF.LetTerm(typing0, binding0, tffTermToTHF(body))
       case TFF.Assignment(lhs, rhs) => THF.BinaryFormula(THF.:=, tffTermToTHF(lhs), tffTermToTHF(rhs))
+      case TFF.NonclassicalPolyaryFormula(connective, args) =>
+        val connective0: THF.VararyConnective = connective match {
+          case TFF.NonclassicalLongOperator(name, parameters) =>
+            val parameters0 = parameters.map {
+              case Left(index) => Left(tffTermToTHF(index))
+              case Right((lhs, rhs)) => Right((tffTermToTHF(lhs), tffTermToTHF(rhs)))
+            }
+            THF.NonclassicalLongOperator(name, parameters0)
+          case TFF.NonclassicalBox(index) => THF.NonclassicalBox(index.map(tffTermToTHF))
+          case TFF.NonclassicalDiamond(index) => THF.NonclassicalDiamond(index.map(tffTermToTHF))
+        }
+        args.foldLeft[THF.Formula](THF.ConnectiveTerm(connective0)) { case (expr, arg) => THF.BinaryFormula(THF.App, expr, tffLogicFormulaToTHF(arg)) }
     }
   }
   private[this] final def tffUnaryConnectiveToTHF(conn: TPTP.TFF.UnaryConnective): TPTP.THF.UnaryConnective = {
@@ -420,6 +432,13 @@ object SyntaxTransform {
         }
       case TFF.LetFormula(_, _, body) => getTypeFromTFFTerm(symbol, body)
       case TFF.Assignment(lhs, rhs) => None
+      case TFF.NonclassicalPolyaryFormula(_, args) =>
+        val argsIt = args.iterator
+        var result: Option[TPTP.THF.Type] = None
+        while (argsIt.hasNext && result.isEmpty) {
+          result = getTypeFromTFFFormula(symbol, argsIt.next())
+        }
+        result
     }
   }
 

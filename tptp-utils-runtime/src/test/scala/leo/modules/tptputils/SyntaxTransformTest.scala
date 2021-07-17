@@ -7,8 +7,64 @@ import leo.datastructures.TPTP
 
 class SyntaxTransformTest extends AnyFunSuite {
   test("test1") {
-    val res = Parser.annotatedTFF("tff(a, axiom, ![X]: p(X) = a(c,d,e,e,f)).")
-    println(SyntaxTransform.tffToTHF(res).pretty)
+    val input =
+      """
+        |%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        |% Example 1: Basic modal reasoning
+        |%
+        |%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        |
+        |%--- logic specification
+        |tff(spec, logic, ( $modal := [
+        |   $constants := $rigid,
+        |   $quantification := $constant,
+        |   $consequence := $global,
+        |   $modalities := $modal_system_S5  ] )).
+        |
+        |%--- does ϕ → □◇ϕ hold?
+        |tff(mysterious, conjecture, ![A:$o]: (A => ($box($dia(A)))) ).""".stripMargin
+    val res = Parser.problem(input)
+    println(SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.THF, res).pretty)
+  }
+
+  test("test2") {
+    val input =
+      """
+        |%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        |% Example 1: Basic modal reasoning
+        |%
+        |%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        |
+        |%--- logic specification
+        |tff(spec, logic, ( $modal := [
+        |   $constants := $rigid,
+        |   $quantification := $constant,
+        |   $consequence := $global,
+        |   $modalities := $modal_system_S5  ] )).
+        |
+        |%--- does ϕ → □◇ϕ hold?
+        |tff(mysterious, conjecture, ![A:$o]: (A => ([#a](<#b>(A)))) ).""".stripMargin
+    val res = Parser.problem(input)
+    println(SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.THF, res).pretty)
+  }
+
+  test("SYN000+1 problem transform") {
+    val res = Parser.problem(io.Source.fromFile("/home/lex/TPTP/Problems/SYN/SYN000_4.p"))
+    val res2 = SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.THF, res)
+    println(res2.pretty)
+  }
+
+  test("SYN000_1 2") {
+    assertThrows[TPTPTransformException]{
+      val res = Parser.problem(io.Source.fromFile("/home/lex/TPTP/Problems/SYN/SYN000+1.p"))
+      val res2 = SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.CNF, res)
+      println(res2.pretty)
+      try {
+        Parser.problem(res2.pretty)
+      } catch {
+        case e: TPTPParseException => fail(e.toString)
+      }
+    }
   }
 
   test("SYN000_1") {
