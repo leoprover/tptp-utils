@@ -3,8 +3,6 @@ package leo.modules.tptputils
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.CNF
 
-import scala.collection.immutable.{AbstractSeq, LinearSeq}
-
 object SyntaxTransform {
   @inline final def tffToTHF(tff: TPTP.TFFAnnotated): TPTP.THFAnnotated =
     TPTP.THFAnnotated(tff.name, tff.role, tffStatementToTHF(tff.formula), tff.annotations)
@@ -270,7 +268,7 @@ object SyntaxTransform {
   }
 
   private[this] final def tcfLogicFormulaToTFF(formula: TPTP.TCF.Formula): TPTP.TFF.Formula = {
-    import TPTP.{TCF, TFF}
+    import TPTP.TFF
     formula.clause match {
       case Seq() => TPTP.TFF.AtomicFormula("$false", Seq.empty)
       case _ =>
@@ -299,7 +297,7 @@ object SyntaxTransform {
 
   type CNFFreeVars = Set[String]
   private[this] final def cnfLogicFormulaToFOF(formula: TPTP.CNF.Formula): TPTP.FOF.Formula = {
-    import TPTP.{CNF, FOF}
+    import TPTP.FOF
     formula match {
       case Seq() => FOF.AtomicFormula("$false", Seq.empty) // Should never happen, but just to be on the safe side
       case _ =>
@@ -373,7 +371,7 @@ object SyntaxTransform {
         }
     }
     val unspecifiedSymbols = (symbolsMap.keySet diff symbolsWithType).toSeq
-    val freshTypeSpecifications: mutable.Map[String, TPTP.THFAnnotated] = mutable.Map.empty
+//    val freshTypeSpecifications: mutable.Map[String, TPTP.THFAnnotated] = mutable.Map.empty TODO: For what was this intended?
     unspecifiedSymbols.map { s =>
       val ty = getTypeFromSymbolOccurence(s, symbolsMap(s))
       val spec = TPTP.THF.Typing(s, ty)
@@ -382,7 +380,6 @@ object SyntaxTransform {
   }
 
   private[this] def getTypeFromSymbolOccurence(symbol: String, formula: TPTP.AnnotatedFormula): TPTP.THF.Type = {
-    import TPTP.THF
     val result = formula match {
       case TPTP.TFFAnnotated(_, _, TPTP.TFF.Logical(formula), _) => getTypeFromTFFFormula(symbol, formula)
       case TPTP.FOFAnnotated(_, _, TPTP.FOF.Logical(formula), _) => getTypeFromFOFFormula(symbol, formula)
@@ -421,7 +418,7 @@ object SyntaxTransform {
         val leftResult = getTypeFromTFFTerm(symbol, left)
         if (leftResult.isDefined) leftResult
         else getTypeFromTFFTerm(symbol, right)
-      case TFF.FormulaVariable(name) => None
+      case TFF.FormulaVariable(_) => None
       case TFF.ConditionalFormula(condition, thn, els) =>
         val condResult = getTypeFromTFFFormula(symbol, condition)
         if (condResult.isDefined) condResult
@@ -431,7 +428,7 @@ object SyntaxTransform {
           else getTypeFromTFFTerm(symbol, els)
         }
       case TFF.LetFormula(_, _, body) => getTypeFromTFFTerm(symbol, body)
-      case TFF.Assignment(lhs, rhs) => None
+      case TFF.Assignment(_, _) => None
       case TFF.NonclassicalPolyaryFormula(_, args) =>
         val argsIt = args.iterator
         var result: Option[TPTP.THF.Type] = None
