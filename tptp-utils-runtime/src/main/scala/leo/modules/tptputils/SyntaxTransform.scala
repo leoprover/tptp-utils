@@ -130,6 +130,7 @@ object SyntaxTransform {
         val binding0 = binding.map { case (lhs, rhs) => (tffTermToTHF(lhs), tffTermToTHF(rhs)) }
         THF.LetTerm(typing0, binding0, tffTermToTHF(body))
       case TFF.Assignment(lhs, rhs) => THF.BinaryFormula(THF.:=, tffTermToTHF(lhs), tffTermToTHF(rhs))
+      case TFF.MetaIdentity(lhs, rhs) => THF.BinaryFormula(THF.==, tffTermToTHF(lhs), tffTermToTHF(rhs))
       case TFF.NonclassicalPolyaryFormula(connective, args) =>
         val connective0: THF.VararyConnective = connective match {
           case TFF.NonclassicalLongOperator(name, parameters) =>
@@ -429,6 +430,7 @@ object SyntaxTransform {
         }
       case TFF.LetFormula(_, _, body) => getTypeFromTFFTerm(symbol, body)
       case TFF.Assignment(_, _) => None
+      case TFF.MetaIdentity(_, _) => None
       case TFF.NonclassicalPolyaryFormula(_, args) =>
         val argsIt = args.iterator
         var result: Option[TPTP.THF.Type] = None
