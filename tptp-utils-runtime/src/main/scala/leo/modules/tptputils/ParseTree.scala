@@ -1,7 +1,7 @@
 package leo.modules.tptputils
 
 import leo.datastructures.TPTP
-import leo.datastructures.TPTP.TFF
+import leo.datastructures.TPTP.{FOF, TFF}
 
 object ParseTree {
 
@@ -36,23 +36,35 @@ object ParseTree {
 
   private[this] final def tffStatement(tffStatement: TPTP.TFF.Statement): String = {
     tffStatement match {
-      case TFF.Typing(atom, typ) => s"{ type : 'typing', name : '${atom}', body : ${tffType(typ)} }"
+      case TFF.Typing(atom, typ) => s"{ type : 'typing', name : '$atom', body : [${tffType(typ)}] }"
       case TFF.Logical(formula) => tffFormula(formula)
     }
   }
   private[this] final def tffFormula(formula: TPTP.TFF.Formula): String = formula match {
     case TFF.AtomicFormula(f, args) => s"{ type : 'atomicFormula' , name : '$f' , body : ${args.map(tffTerm).mkString("[", ", ", "]")} }"
-    case TFF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : '' , body : [${tffFormula(body)}] }"
+    case TFF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : [${tffQuantifiedFormulaVariableList(variableList)}] , body : [${tffFormula(body)}] }"
     case TFF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${tffFormula(body)}] }"
     case TFF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${tffFormula(left)}, ${tffFormula(right)}] }"
     case TFF.Equality(left, right) => s"{ type : 'connective' , connective : '=' , body : [${tffTerm(left)}, ${tffTerm(right)}] }"
     case TFF.Inequality(left, right) => s"{ type : 'connective' , connective : '!=' , body : [${tffTerm(left)}, ${tffTerm(right)}}] }"
     case TFF.FormulaVariable(name) => s"{ type : 'variable' , name : '$name' }"
-    case TFF.ConditionalFormula(condition, thn, els) => s"{ type : 'connective' , connective : 'ite' , body : [${tffFormula(condition)}, ${tffTerm(thn)}, ${tffTerm(els)}}] }"
-    case TFF.LetFormula(typing, binding, body) => ???
+    case TFF.ConditionalFormula(condition, thn, els) => s"{ type : 'conditional' , body : [${tffFormula(condition)}, ${tffTerm(thn)}, ${tffTerm(els)}}] }"
+    case TFF.LetFormula(typing, binding, body) => s"{ type: 'let' , typings : [${typing.map {case (n,t) => s"{ type : 'typing' , name : '$n' , body : ${tffType(t)} }"}}] , bindings : [${binding.map {case (lhs, rhs) => s"{ typing : 'binding', body : [${tffTerm(lhs)}, ${tffTerm(rhs)}] }"}}] , body : [${tffTerm(body)}] }"
     case TFF.Assignment(lhs, rhs) => s"{ type : 'connective' , connective : 'assignment' , body : [${tffTerm(lhs)}, ${tffTerm(rhs)}] }"
     case TFF.MetaIdentity(lhs, rhs) => s"{ type : 'connective' , connective : 'metaEq' , body : [${tffTerm(lhs)}, ${tffTerm(rhs)}] }"
-    case TFF.NonclassicalPolyaryFormula(connective, args) => s"{ type : 'connective' , connective : '' , body : ${args.map(tffFormula).mkString("[", ", ", "]")} }"
+    case TFF.NonclassicalPolyaryFormula(connective, args) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : ${args.map(tffFormula).mkString("[", ", ", "]")} }"
+  }
+  private[this] final def tffQuantifiedFormulaVariableList(variableList:  Seq[(String, Option[TPTP.TFF.Type])]): String = {
+    val sb: StringBuilder = new StringBuilder()
+    variableList.foreach { case (str, maybeType) =>
+      sb.append(s"{ name : '$str' ")
+      maybeType match {
+        case Some(ty) => sb.append(s", type : ${tffType(ty)} }")
+        case None => sb.append("}")
+      }
+      sb.append(",")
+    }
+    if (variableList.isEmpty) sb.toString() else sb.init.toString()
   }
   private[this] final def tffTerm(term: TPTP.TFF.Term): String = term match {
     case TFF.AtomicTerm(f, args) => s"{ type : 'atomicTerm' , name : '$f' , body : ${args.map(tffTerm).mkString("[", ", ", "]")} }"
@@ -70,7 +82,30 @@ object ParseTree {
     case TFF.TupleType(components) => s"{ type : 'tuple' , body : ${components.map(tffType).mkString("[", ", ", "]")} }"
   }
 
-  private[this] final def fofStatement(thfStatement: TPTP.FOF.Statement): String = ""
+  private[this] final def fofStatement(fofStatement: TPTP.FOF.Statement): String = {
+    fofStatement match {
+      case FOF.Logical(formula) => fofFormula(formula)
+    }
+  }
+  private[this] final def fofFormula(formula: TPTP.FOF.Formula): String = {
+    formula match {
+      case FOF.AtomicFormula(f, args) => s"{ type : 'atomicFormula' , name : '$f' , body : ${args.map(fofTerm).mkString("[", ", ", "]")} }"
+      case FOF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : [${variableList.map(str => s"'$str''").mkString(",")}] , body : [${fofFormula(body)}] }"
+      case FOF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${fofFormula(body)}] }"
+      case FOF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${fofFormula(left)}, ${fofFormula(right)}] }"
+      case FOF.Equality(left, right) => s"{ type : 'connective' , connective : '=' , body : [${fofTerm(left)}, ${fofTerm(right)}] }"
+      case FOF.Inequality(left, right) => s"{ type : 'connective' , connective : '!=' , body : [${fofTerm(left)}, ${fofTerm(right)}] }"
+    }
+  }
+  private[this] final def fofTerm(term: TPTP.FOF.Term): String = {
+    term match {
+      case FOF.AtomicTerm(f, args) => s"{ type : 'atomicTerm' , name : '$f' , body : ${args.map(fofTerm).mkString("[", ", ", "]")} }"
+      case FOF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
+      case FOF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
+      case FOF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
+    }
+  }
+
   private[this] final def tcfStatement(thfStatement: TPTP.TCF.Statement): String = ""
   private[this] final def cnfStatement(thfStatement: TPTP.CNF.Statement): String = ""
 }
