@@ -1,7 +1,7 @@
 package leo.modules.tptputils
 
 import leo.datastructures.TPTP
-import leo.datastructures.TPTP.{FOF, TFF}
+import leo.datastructures.TPTP.{CNF, FOF, TCF, TFF, THF}
 
 object ParseTree {
 
@@ -32,7 +32,28 @@ object ParseTree {
     s"$prefix, formula : $formulaJSON }"
   }
 
-  private[this] final def thfStatement(thfStatement: TPTP.THF.Statement): String = ""
+  private[this] final def thfStatement(statement: TPTP.THF.Statement): String = {
+    statement match {
+      case THF.Typing(atom, typ) => s"{ type : 'typing' , name : '$atom' , body : [${thfFormula(typ)}] }"
+      case THF.Logical(formula) => thfFormula(formula)
+    }
+  }
+  private[this] final def thfFormula(formula: TPTP.THF.Formula): String = {
+    formula match {
+      case THF.FunctionTerm(f, args) => s"{ type : 'atomic' , name : '$f' , body : ${args.map(thfFormula).mkString("[", ", ", "]")} }"
+      case THF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : ${variableList.map {case (n,t) => s"{ name : '$n' , body : ${thfFormula(t)}"}.mkString("[",",","]")} , body : [${thfFormula(body)}] }"
+      case THF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
+      case THF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${thfFormula(body)}] }"
+      case THF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${thfFormula(left)}, ${thfFormula(right)}] }"
+      case THF.Tuple(elements) => s"{ type : 'tuple' , body : ${elements.map(thfFormula).mkString("[", ", ", "]")} }"
+      case THF.ConditionalTerm(condition, thn, els) => s"{ type : 'conditional' , body : [${thfFormula(condition)}, ${thfFormula(thn)}, ${thfFormula(els)}}] }"
+      case THF.LetTerm(typing, binding, body) => s"{ type: 'let' , typings : [${typing.map {case (n,t) => s"{ type : 'typing' , name : '$n' , body : ${thfFormula(t)} }"}}] , bindings : [${binding.map {case (lhs, rhs) => s"{ typing : 'binding', body : [${thfFormula(lhs)}, ${thfFormula(rhs)}] }"}}] , body : [${thfFormula(body)}] }"
+      case THF.DefinedTH1ConstantTerm(constant) => s"{ type : 'definedTerm' , name : '${constant.pretty}' }"
+      case THF.ConnectiveTerm(conn) => s"{ type : 'connectiveTerm' , connective : '${conn.pretty}' }"
+      case THF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
+      case THF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
+    }
+  }
 
   private[this] final def tffStatement(tffStatement: TPTP.TFF.Statement): String = {
     tffStatement match {
@@ -106,6 +127,28 @@ object ParseTree {
     }
   }
 
-  private[this] final def tcfStatement(thfStatement: TPTP.TCF.Statement): String = ""
-  private[this] final def cnfStatement(thfStatement: TPTP.CNF.Statement): String = ""
+  private[this] final def tcfStatement(statement: TPTP.TCF.Statement): String = statement match {
+    case TCF.Typing(atom, typ) => s"{ type : 'typing', name : '$atom', body : [${tffType(typ)}] }"
+    case TCF.Logical(TCF.Formula(variables, clause)) => s"{ type : 'clause', vars : [${tffQuantifiedFormulaVariableList(variables)}] , body : ${clause.map(cnfLiteral).mkString("[", ",", "]")} }"
+  }
+
+  private[this] final def cnfStatement(statement: TPTP.CNF.Statement): String = {
+    statement match {
+      case CNF.Logical(formula) => cnfFormula(formula)
+    }
+  }
+  @inline private[this] final def cnfFormula(formula: TPTP.CNF.Formula): String = {
+    s"{ type : 'clause', body : ${formula.map(cnfLiteral).mkString("[", ",", "]")} }"
+  }
+  private[this] final def cnfLiteral(literal: TPTP.CNF.Literal): String = literal match {
+    case CNF.PositiveAtomic(CNF.AtomicFormula(f, args)) => s"{ type : 'positive' , name : '$f' , body : ${args.map(cnfTerm).mkString("[",",","]")} }"
+    case CNF.NegativeAtomic(CNF.AtomicFormula(f, args)) => s"{ type : 'positive' , name : '$f' , body : ${args.map(cnfTerm).mkString("[",",","]")} }"
+    case CNF.Equality(left, right) => s"{ type : 'equality' , body : [${cnfTerm(left)}, ${cnfTerm(right)}] }"
+    case CNF.Inequality(left, right) => s"{ type : 'inequality' , body : [${cnfTerm(left)}, ${cnfTerm(right)}] }"
+  }
+  private[this] final def cnfTerm(term: TPTP.CNF.Term): String = term match {
+    case CNF.AtomicTerm(f, args) => s"{ type : 'atomicTerm' , name : '$f' , body : ${args.map(cnfTerm).mkString("[", ", ", "]")} }"
+    case CNF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
+    case CNF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
+  }
 }
