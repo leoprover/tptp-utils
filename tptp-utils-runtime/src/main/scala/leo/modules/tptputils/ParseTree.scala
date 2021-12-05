@@ -32,34 +32,28 @@ object ParseTree {
     s"$prefix, formula : $formulaJSON }"
   }
 
-  private[this] final def thfStatement(statement: TPTP.THF.Statement): String = {
-    statement match {
-      case THF.Typing(atom, typ) => s"{ type : 'typing' , name : '$atom' , body : [${thfFormula(typ)}] }"
-      case THF.Logical(formula) => thfFormula(formula)
-    }
+  private[this] final def thfStatement(statement: TPTP.THF.Statement): String = statement match {
+    case THF.Typing(atom, typ) => s"{ type : 'typing' , name : '$atom' , body : [${thfFormula(typ)}] }"
+    case THF.Logical(formula) => thfFormula(formula)
   }
-  private[this] final def thfFormula(formula: TPTP.THF.Formula): String = {
-    formula match {
-      case THF.FunctionTerm(f, args) => s"{ type : 'atomic' , name : '$f' , body : ${args.map(thfFormula).mkString("[", ", ", "]")} }"
-      case THF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : ${variableList.map {case (n,t) => s"{ name : '$n' , body : ${thfFormula(t)}"}.mkString("[",",","]")} , body : [${thfFormula(body)}] }"
-      case THF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
-      case THF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${thfFormula(body)}] }"
-      case THF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${thfFormula(left)}, ${thfFormula(right)}] }"
-      case THF.Tuple(elements) => s"{ type : 'tuple' , body : ${elements.map(thfFormula).mkString("[", ", ", "]")} }"
-      case THF.ConditionalTerm(condition, thn, els) => s"{ type : 'conditional' , body : [${thfFormula(condition)}, ${thfFormula(thn)}, ${thfFormula(els)}}] }"
-      case THF.LetTerm(typing, binding, body) => s"{ type: 'let' , typings : [${typing.map {case (n,t) => s"{ type : 'typing' , name : '$n' , body : ${thfFormula(t)} }"}}] , bindings : [${binding.map {case (lhs, rhs) => s"{ typing : 'binding', body : [${thfFormula(lhs)}, ${thfFormula(rhs)}] }"}}] , body : [${thfFormula(body)}] }"
-      case THF.DefinedTH1ConstantTerm(constant) => s"{ type : 'definedTerm' , name : '${constant.pretty}' }"
-      case THF.ConnectiveTerm(conn) => s"{ type : 'connectiveTerm' , connective : '${conn.pretty}' }"
-      case THF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
-      case THF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
-    }
+  private[this] final def thfFormula(formula: TPTP.THF.Formula): String = formula match {
+    case THF.FunctionTerm(f, args) => s"{ type : 'atomic' , name : '$f' , body : ${args.map(thfFormula).mkString("[", ", ", "]")} }"
+    case THF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : ${variableList.map {case (n,t) => s"{ name : '$n' , body : ${thfFormula(t)}"}.mkString("[",",","]")} , body : [${thfFormula(body)}] }"
+    case THF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
+    case THF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${thfFormula(body)}] }"
+    case THF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${thfFormula(left)}, ${thfFormula(right)}] }"
+    case THF.Tuple(elements) => s"{ type : 'tuple' , body : ${elements.map(thfFormula).mkString("[", ", ", "]")} }"
+    case THF.ConditionalTerm(condition, thn, els) => s"{ type : 'conditional' , body : [${thfFormula(condition)}, ${thfFormula(thn)}, ${thfFormula(els)}}] }"
+    case THF.LetTerm(typing, binding, body) => s"{ type: 'let' , typings : [${typing.map {case (n,t) => s"{ type : 'typing' , name : '$n' , body : ${thfFormula(t)} }"}}] , bindings : [${binding.map {case (lhs, rhs) => s"{ typing : 'binding', body : [${thfFormula(lhs)}, ${thfFormula(rhs)}] }"}}] , body : [${thfFormula(body)}] }"
+    case THF.DefinedTH1ConstantTerm(constant) => s"{ type : 'definedTerm' , name : '${constant.pretty}' }"
+    case THF.ConnectiveTerm(conn) => s"{ type : 'connectiveTerm' , connective : '${conn.pretty}' }"
+    case THF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
+    case THF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
   }
 
-  private[this] final def tffStatement(tffStatement: TPTP.TFF.Statement): String = {
-    tffStatement match {
-      case TFF.Typing(atom, typ) => s"{ type : 'typing', name : '$atom', body : [${tffType(typ)}] }"
-      case TFF.Logical(formula) => tffFormula(formula)
-    }
+  private[this] final def tffStatement(tffStatement: TPTP.TFF.Statement): String = tffStatement match {
+    case TFF.Typing(atom, typ) => s"{ type : 'typing', name : '$atom', body : [${tffType(typ)}] }"
+    case TFF.Logical(formula) => tffFormula(formula)
   }
   private[this] final def tffFormula(formula: TPTP.TFF.Formula): String = formula match {
     case TFF.AtomicFormula(f, args) => s"{ type : 'atomicFormula' , name : '$f' , body : ${args.map(tffTerm).mkString("[", ", ", "]")} }"
@@ -103,28 +97,22 @@ object ParseTree {
     case TFF.TupleType(components) => s"{ type : 'tuple' , body : ${components.map(tffType).mkString("[", ", ", "]")} }"
   }
 
-  private[this] final def fofStatement(fofStatement: TPTP.FOF.Statement): String = {
-    fofStatement match {
-      case FOF.Logical(formula) => fofFormula(formula)
-    }
+  private[this] final def fofStatement(fofStatement: TPTP.FOF.Statement): String = fofStatement match {
+    case FOF.Logical(formula) => fofFormula(formula)
   }
-  private[this] final def fofFormula(formula: TPTP.FOF.Formula): String = {
-    formula match {
-      case FOF.AtomicFormula(f, args) => s"{ type : 'atomicFormula' , name : '$f' , body : ${args.map(fofTerm).mkString("[", ", ", "]")} }"
-      case FOF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : [${variableList.map(str => s"'$str''").mkString(",")}] , body : [${fofFormula(body)}] }"
-      case FOF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${fofFormula(body)}] }"
-      case FOF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${fofFormula(left)}, ${fofFormula(right)}] }"
-      case FOF.Equality(left, right) => s"{ type : 'connective' , connective : '=' , body : [${fofTerm(left)}, ${fofTerm(right)}] }"
-      case FOF.Inequality(left, right) => s"{ type : 'connective' , connective : '!=' , body : [${fofTerm(left)}, ${fofTerm(right)}] }"
-    }
+  private[this] final def fofFormula(formula: TPTP.FOF.Formula): String = formula match {
+    case FOF.AtomicFormula(f, args) => s"{ type : 'atomicFormula' , name : '$f' , body : ${args.map(fofTerm).mkString("[", ", ", "]")} }"
+    case FOF.QuantifiedFormula(quantifier, variableList, body) => s"{ type : 'quantifier' , quantifier : '${quantifier.pretty}' , vars : [${variableList.map(str => s"'$str''").mkString(",")}] , body : [${fofFormula(body)}] }"
+    case FOF.UnaryFormula(connective, body) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${fofFormula(body)}] }"
+    case FOF.BinaryFormula(connective, left, right) => s"{ type : 'connective' , connective : '${connective.pretty}' , body : [${fofFormula(left)}, ${fofFormula(right)}] }"
+    case FOF.Equality(left, right) => s"{ type : 'connective' , connective : '=' , body : [${fofTerm(left)}, ${fofTerm(right)}] }"
+    case FOF.Inequality(left, right) => s"{ type : 'connective' , connective : '!=' , body : [${fofTerm(left)}, ${fofTerm(right)}] }"
   }
-  private[this] final def fofTerm(term: TPTP.FOF.Term): String = {
-    term match {
-      case FOF.AtomicTerm(f, args) => s"{ type : 'atomicTerm' , name : '$f' , body : ${args.map(fofTerm).mkString("[", ", ", "]")} }"
-      case FOF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
-      case FOF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
-      case FOF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
-    }
+  private[this] final def fofTerm(term: TPTP.FOF.Term): String = term match {
+    case FOF.AtomicTerm(f, args) => s"{ type : 'atomicTerm' , name : '$f' , body : ${args.map(fofTerm).mkString("[", ", ", "]")} }"
+    case FOF.Variable(name) => s"{ type : 'variable' , name : '$name' }"
+    case FOF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
+    case FOF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
   }
 
   private[this] final def tcfStatement(statement: TPTP.TCF.Statement): String = statement match {
