@@ -63,22 +63,33 @@ object TPTPUtilsApp {
         case e: Throwable =>
           error = Some(s"Unexpected error: ${e.getMessage} (${e.printStackTrace()}). This is considered an implementation error; please report this!")
       } finally {
-        if (error.nonEmpty && tstpOutput) {
-          if (outfile.isDefined) {
-            if (inputFileName.nonEmpty) outfile.get.println(s"% SZS status Error for $inputFileName : ${error.get}\n")
-            else outfile.get.println(s"% SZS status Error : ${error.get}\n")
-            outfile.get.flush()
+        if (error.nonEmpty) {
+          if (tstpOutput) {
+            if (outfile.isDefined) {
+              if (inputFileName.nonEmpty) outfile.get.println(s"% SZS status Error for $inputFileName : ${error.get}\n")
+              else outfile.get.println(s"% SZS status Error : ${error.get}\n")
+              outfile.get.flush()
+            } else {
+              if (inputFileName.nonEmpty) println(s"% SZS status Error for $inputFileName : ${error.get}\n")
+              else println(s"% SZS status Error : ${error.get}\n")
+            }
           } else {
-            if (inputFileName.nonEmpty) println(s"% SZS status Error for $inputFileName : ${error.get}\n")
-            else println(s"% SZS status Error : ${error.get}\n")
+            if (outfile.isDefined) {
+              outfile.get.println(s"Error: ${error.get}")
+              outfile.get.flush()
+              if (outputFileName.isDefined) {
+                if (outputFileName.get != "-") System.err.println(s"Error: ${error.get}")
+              }
+            } else println(s"Error: ${error.get}")
           }
         }
-        infile.foreach(_.close())
-        outfile.foreach(_.close())
-      }
-      if (error.nonEmpty) {
-        if (!tstpOutput) println(s"Error: ${error.get}")
-        System.exit(1)
+        try {
+          infile.foreach(_.close())
+          outfile.foreach(_.close())
+        } catch {
+          case e: Throwable => ()
+        }
+        if (error.nonEmpty) System.exit(1)
       }
     }
   }
