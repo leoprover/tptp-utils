@@ -81,9 +81,17 @@ If there is a syntax error, the output will look similar to the following:
 
 Using TSTP output is important when, e.g., exchanging this information between reasoning systems.
 
+### As library
+
+`tptp-utils` may also be included as library to your Scala software projects.
+
 ## Installation
 
+You can use the pre-built executable .jar file (in the release section), without
+any other installation steps. 
 
+You may build `tptp-utils` from source: This requires a JDK and the scala build tool `sbt` in
+a reasonably current version.
 
 ## License
 `tptp-utils` is published under MIT license, see `LICENSE` file for details.
