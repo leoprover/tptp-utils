@@ -24,7 +24,7 @@ object TPTPUtilsApp {
     if (args.contains("--version")) {
       printVersion(); return
     }
-    if (args.isEmpty) {usage(); println("empty")}
+    if (args.isEmpty) usage()
     else {
       var infile: Option[Source] = None
       var outfile: Option[PrintWriter] = None
