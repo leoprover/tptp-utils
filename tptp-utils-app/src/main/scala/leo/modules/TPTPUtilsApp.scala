@@ -77,7 +77,7 @@ object TPTPUtilsApp {
         outfile.foreach(_.close())
       }
       if (error.nonEmpty) {
-        if (!tstpOutput) println(error.get)
+        if (!tstpOutput) println(s"Error: ${error.get}")
         System.exit(1)
       }
     }
