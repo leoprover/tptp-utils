@@ -13,7 +13,7 @@ lazy val tptpUtils = (project in file("."))
   .disablePlugins(sbtassembly.AssemblyPlugin)
   .settings(
     commonSettings,
-    version := "1.1",
+    version := "1.0",
     name := "tptp-utils",
     description := "A library and tool for some TPTP utility functions."
   ).aggregate(tptpUtilsRuntime, tptpUtilsApp)
@@ -22,7 +22,7 @@ lazy val tptpUtilsRuntime = (project in file("tptp-utils-runtime"))
 	.settings(
 	  commonSettings,
     name := "tptp-utils-runtime",
-    version := "1.1",
+    version := "1.0",
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     test in assembly := {},
     assemblyJarName in assembly := s"${name.value}-${version.value}.jar",
