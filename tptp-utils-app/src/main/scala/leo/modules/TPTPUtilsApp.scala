@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.Problem
-import leo.modules.tptputils.{ParseTree, SyntaxTransform}
+import leo.modules.tptputils.{ParseTree, SyntaxTransform, Linter}
 import leo.modules.input.TPTPParser
 
 import scala.io.Source
@@ -49,6 +49,10 @@ object TPTPUtilsApp {
           case Transform(goal) =>
             val transformed = SyntaxTransform.transformProblem(goal, parsedInput)
             generateResult(tptpProblemToString(transformed), "Success", "ListOfFormulae")
+          case Lint =>
+            val lint = Linter(parsedInput)
+            val result = lint.mkString("\n")
+            generateResult(result, "Success", "LogicalData")
         }
         outfile.get.print(result)
         outfile.get.flush()
@@ -87,7 +91,7 @@ object TPTPUtilsApp {
           infile.foreach(_.close())
           outfile.foreach(_.close())
         } catch {
-          case e: Throwable => ()
+          case _: Throwable => ()
         }
         if (error.nonEmpty) System.exit(1)
       }
@@ -131,33 +135,34 @@ object TPTPUtilsApp {
     println(s"usage: $name [--tstp] <command> [command parameters] <problem file> [<output file>]")
     println(
       """
-        | <command> is the command to be executed (parse, transform).
-        | <problem file> can be either a file name or '-' (without quotes) for stdin.
-        | If <output file> is specified, the result is written to <output file>, otherwise to stdout.
+        | <command> is the command to be executed (see below). <problem file> can be
+        | either a file name or '-' (without quotes) for stdin. If <output file> is
+        | specified, the result is written to <output file>, otherwise to stdout.
         |
         | Commands:
-        |  parse
-        |     Parse the problem and return SZS Success if successful; SZS SyntaxError otherwise.
-        |  reparse
-        |     Parse the problem and, if successful, print the AST of the parsed problem in a
-        |     JSON-based format.
-        |  transform
-        |     Parse a problem, and transform and print it in a different TPTP language. This is possible
-        |     if the goal language is at least as expressive as the source language, e.g.
-        |     transform a FOF problem into a THF problem. Auxiliary formulae might be added if necessary,
-        |     e.g., new type declarations.
-        |     The goal language is specified as a mandatory command parameter using one of the following values:
-        |     --CNF, --TCF, --FOF, --TFF, --THF
+        |  parse        Parse the problem and return SZS Success if successful;
+        |               SZS SyntaxError otherwise.
+        |  reparse      Parse the problem and, if successful, print the AST of
+        |               the parsed problem in a JSON-based format.
+        |  transform    Parse a problem, and transform and print it in a different
+        |               TPTP language. This is possible if the goal language is at
+        |               least as expressive as the source language, e.g. transforming
+        |               a FOF problem into a THF problem. Auxiliary formulae might be
+        |               added if necessary, e.g., new type declarations.
+        |
+        |               The goal language is specified as a mandatory command parameter
+        |               using one of the following values:
+        |               --CNF, --TCF, --FOF, --TFF, --THF
+        |  lint         Inspect the input problem for suspicious constructs, unused symbols,
+        |               malformed logic specifications, etc.
         |
         | Options:
-        |  --tstp
-        |     Enable TSTP-compatible output: The output in <output file> (or stdout) will
-        |     start with a SZS status value and the output will be wrapped within
-        |     SZS BEGIN and SZS END block delimiters. Disabled by default.
-        |  --version
-        |     Prints the version number of the executable and terminates.
-        |  --help
-        |     Prints this description and terminates.
+        |  --tstp       Enable TSTP-compatible output: The output in <output file>
+        |               (or stdout) will start with a SZS status value and the output
+        |               will be wrapped within SZS BEGIN and SZS END block delimiters.
+        |               Disabled by default.
+        |  --version    Prints the version number of the executable and terminates.
+        |  --help       Prints this description and terminates.
         |""".stripMargin)
   }
 
@@ -165,6 +170,7 @@ object TPTPUtilsApp {
   final case object Parse extends Command
   final case object Reparse extends Command
   final case class  Transform(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
+  final case object Lint extends Command
 
   private[this] final def parseArgs(args: Seq[String]): Unit = {
     var args0 = args

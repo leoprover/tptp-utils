@@ -92,14 +92,14 @@ object SyntaxTransform {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private[this] final def tffStatementToTHF(statement: TPTP.TFF.Statement): TPTP.THF.Statement = {
+  final def tffStatementToTHF(statement: TPTP.TFF.Statement): TPTP.THF.Statement = {
     import TPTP.{TFF, THF}
     statement match {
       case TFF.Typing(atom, typ) => THF.Typing(atom, tffTypeToTHF(typ))
       case TFF.Logical(formula) => THF.Logical(tffLogicFormulaToTHF(formula))
     }
   }
-  private[this] final def tffLogicFormulaToTHF(formula: TPTP.TFF.Formula): TPTP.THF.Formula = {
+  final def tffLogicFormulaToTHF(formula: TPTP.TFF.Formula): TPTP.THF.Formula = {
     import TPTP.{TFF, THF}
     formula match {
       case TFF.AtomicFormula(f, args) =>
@@ -145,13 +145,13 @@ object SyntaxTransform {
         args.foldLeft[THF.Formula](THF.ConnectiveTerm(connective0)) { case (expr, arg) => THF.BinaryFormula(THF.App, expr, tffLogicFormulaToTHF(arg)) }
     }
   }
-  private[this] final def tffUnaryConnectiveToTHF(conn: TPTP.TFF.UnaryConnective): TPTP.THF.UnaryConnective = {
+  final def tffUnaryConnectiveToTHF(conn: TPTP.TFF.UnaryConnective): TPTP.THF.UnaryConnective = {
     import TPTP.{TFF, THF}
     conn match {
       case TFF.~ => THF.~
     }
   }
-  private[this] final def tffBinaryConnectiveToTHF(conn: TPTP.TFF.BinaryConnective): TPTP.THF.BinaryConnective = {
+  final def tffBinaryConnectiveToTHF(conn: TPTP.TFF.BinaryConnective): TPTP.THF.BinaryConnective = {
     import TPTP.{TFF, THF}
     conn match {
       case TFF.<=> => THF.<=>
@@ -165,7 +165,7 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def tffTermToTHF(term: TPTP.TFF.Term): TPTP.THF.Formula = {
+  final def tffTermToTHF(term: TPTP.TFF.Term): TPTP.THF.Formula = {
     import TPTP.{TFF, THF}
     term match {
       case TFF.AtomicTerm(f, args) =>
@@ -180,7 +180,7 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def tffTypeToTHF(typ: TPTP.TFF.Type): TPTP.THF.Type = {
+  final def tffTypeToTHF(typ: TPTP.TFF.Type): TPTP.THF.Type = {
     import TPTP.{TFF, THF}
     typ match {
       case TFF.AtomicType(name, args) =>
@@ -205,14 +205,14 @@ object SyntaxTransform {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private[this] final def fofStatementToTFF(statement: TPTP.FOF.Statement): TPTP.TFF.Statement = {
+  final def fofStatementToTFF(statement: TPTP.FOF.Statement): TPTP.TFF.Statement = {
     import TPTP.{FOF, TFF}
     statement match {
       case FOF.Logical(formula) => TFF.Logical(fofLogicFormulaToTFF(formula))
     }
   }
 
-  private[this] final def fofLogicFormulaToTFF(formula: TPTP.FOF.Formula): TPTP.TFF.Formula = {
+  final def fofLogicFormulaToTFF(formula: TPTP.FOF.Formula): TPTP.TFF.Formula = {
     import TPTP.{FOF, TFF}
     formula match {
       case FOF.AtomicFormula(f, args) => TFF.AtomicFormula(f, args.map(fofTermToTFF))
@@ -244,7 +244,7 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def fofTermToTFF(term: TPTP.FOF.Term): TPTP.TFF.Term = {
+  final def fofTermToTFF(term: TPTP.FOF.Term): TPTP.TFF.Term = {
     import TPTP.{FOF, TFF}
     term match {
       case FOF.AtomicTerm(f, args) => TFF.AtomicTerm(f, args.map(fofTermToTFF))
@@ -260,7 +260,7 @@ object SyntaxTransform {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private[this] final def tcfStatementToTFF(statement: TPTP.TCF.Statement): TPTP.TFF.Statement = {
+  final def tcfStatementToTFF(statement: TPTP.TCF.Statement): TPTP.TFF.Statement = {
     import TPTP.{TCF, TFF}
     statement match {
       case TCF.Typing(atom, typ) => TFF.Typing(atom, typ)
@@ -268,7 +268,7 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def tcfLogicFormulaToTFF(formula: TPTP.TCF.Formula): TPTP.TFF.Formula = {
+  final def tcfLogicFormulaToTFF(formula: TPTP.TCF.Formula): TPTP.TFF.Formula = {
     import TPTP.TFF
     formula.clause match {
       case Seq() => TPTP.TFF.AtomicFormula("$false", Seq.empty)
@@ -289,7 +289,7 @@ object SyntaxTransform {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private[this] final def cnfStatementToFOF(statement: TPTP.CNF.Statement): TPTP.FOF.Statement = {
+  final def cnfStatementToFOF(statement: TPTP.CNF.Statement): TPTP.FOF.Statement = {
     import TPTP.{CNF, FOF}
     statement match {
       case CNF.Logical(formula) => FOF.Logical(cnfLogicFormulaToFOF(formula))
@@ -297,7 +297,7 @@ object SyntaxTransform {
   }
 
   type CNFFreeVars = Set[String]
-  private[this] final def cnfLogicFormulaToFOF(formula: TPTP.CNF.Formula): TPTP.FOF.Formula = {
+  final def cnfLogicFormulaToFOF(formula: TPTP.CNF.Formula): TPTP.FOF.Formula = {
     import TPTP.FOF
     formula match {
       case Seq() => FOF.AtomicFormula("$false", Seq.empty) // Should never happen, but just to be on the safe side
@@ -309,7 +309,7 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def cnfLiteralToFOF(literal: TPTP.CNF.Literal): (TPTP.FOF.Formula, CNFFreeVars) = {
+  final def cnfLiteralToFOF(literal: TPTP.CNF.Literal): (TPTP.FOF.Formula, CNFFreeVars) = {
     import TPTP.{CNF, FOF}
     literal match {
       case CNF.PositiveAtomic(CNF.AtomicFormula(f, args)) =>
@@ -329,7 +329,7 @@ object SyntaxTransform {
     }
   }
 
-  private[this] final def cnfTermToFOF(term: TPTP.CNF.Term): (TPTP.FOF.Term, CNFFreeVars) = {
+  final def cnfTermToFOF(term: TPTP.CNF.Term): (TPTP.FOF.Term, CNFFreeVars) = {
     import TPTP.{CNF, FOF}
     term match {
       case CNF.AtomicTerm(f, args) =>
