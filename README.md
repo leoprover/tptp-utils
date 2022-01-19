@@ -3,7 +3,7 @@ Library for TPTP-related utility services
 
 -------------------------------
 
-`tptp-utils` is an application for post-processing automated theorem proving input files (i.e., problem files)
+`tptp-utils` is an application for pre- and post-processing automated theorem proving input files (so-called problem files)
 given in the [TPTP](http://tptp.org/) (*Thousands of Problems for Theorem Proving*) syntax standard.
 It is written in Scala and freely available as open-source software.
 
@@ -14,42 +14,44 @@ Current features include:
  - Syntax checking *(validate that the input file is syntactically well-formed)*
  - Reparsing *(Read the input file and print an abstract syntax tree in JSON format)*
  - Dialect transformation *(Translate problem from TPTP dialect A to TPTP dialect B)*
+ - Linting *(Read and check the problem file for suspicious content, malformed logic specification, etc.)* **Work in progress!**
  
 ## Usage
 
 `tptp-utils` is a command-line tool, reads its input from an input file (or stdin)
 and prints its result to stdout (or some output file), as follows:
 
-```bash
+```
 usage: tptputils [--tstp] <command> [command parameters] <problem file> [<output file>]
 
- <command> is the command to be executed (parse, transform).
- <problem file> can be either a file name or '-' (without quotes) for stdin.
- If <output file> is specified, the result is written to <output file>, otherwise to stdout.
+ <command> is the command to be executed (see below). <problem file> can be
+ either a file name or '-' (without quotes) for stdin. If <output file> is
+ specified, the result is written to <output file>, otherwise to stdout.
 
  Commands:
-  parse
-     Parse the problem and return SZS Success if successful; SZS SyntaxError otherwise.
-  reparse
-     Parse the problem and, if successful, print the AST of the parsed problem in a
-     JSON-based format.
-  transform
-     Parse a problem, and transform and print it in a different TPTP language. This is possible
-     if the goal language is at least as expressive as the source language, e.g.
-     transform a FOF problem into a THF problem. Auxiliary formulae might be added if necessary,
-     e.g., new type declarations.
-     The goal language is specified as a mandatory command parameter using one of the following values:
-     --CNF, --TCF, --FOF, --TFF, --THF
+  parse        Parse the problem and return SZS Success if successful;
+               SZS SyntaxError otherwise.
+  reparse      Parse the problem and, if successful, print the AST of
+               the parsed problem in a JSON-based format.
+  transform    Parse a problem, and transform and print it in a different
+               TPTP language. This is possible if the goal language is at
+               least as expressive as the source language, e.g. transforming
+               a FOF problem into a THF problem. Auxiliary formulae might be
+               added if necessary, e.g., new type declarations.
+
+               The goal language is specified as a mandatory command parameter
+               using one of the following values:
+               --CNF, --TCF, --FOF, --TFF, --THF
+  lint         Inspect the input problem for suspicious constructs, unused symbols,
+               malformed logic specifications, etc.
 
  Options:
-  --tstp
-     Enable TSTP-compatible output: The output in <output file> (or stdout) will
-     start with a SZS status value and the output will be wrapped within
-     SZS BEGIN and SZS END block delimiters. Disabled by default.
-  --version
-     Prints the version number of the executable and terminates.
-  --help
-     Prints this description and terminates.
+  --tstp       Enable TSTP-compatible output: The output in <output file>
+               (or stdout) will start with a SZS status value and the output
+               will be wrapped within SZS BEGIN and SZS END block delimiters.
+               Disabled by default.
+  --version    Prints the version number of the executable and terminates.
+  --help       Prints this description and terminates.
 ```
 
 ### Example 1:
