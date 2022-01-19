@@ -34,7 +34,7 @@ lazy val tptpUtilsApp = (project in file("tptp-utils-app"))
 	.settings(
 	  commonSettings,
     name := "tptp-utils-app",
-    version := "1.0",
+    version := "1.1",
     Compile/mainClass := Some("leo.modules.TPTPUtilsApp"),
     mainClass in assembly := Some("leo.modules.TPTPUtilsApp"),
     test in assembly := {},
