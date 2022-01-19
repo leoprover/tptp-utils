@@ -1,6 +1,8 @@
 # tptp-utils
 Library for TPTP-related utility services
 
+`tptp-utils` may be referenced as [![DOI](https://zenodo.org/badge/435301165.svg)](https://zenodo.org/badge/latestdoi/435301165).
+
 -------------------------------
 
 `tptp-utils` is an application for pre- and post-processing automated theorem proving input files (so-called problem files)
