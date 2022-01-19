@@ -186,6 +186,7 @@ object TPTPUtilsApp {
       val parsedCommand: Command = hd match {
         case "parse" => Parse
         case "reparse" => Reparse
+        case "lint" => Lint
         case "transform" =>
           val param = args0.tail.head
           if (param.startsWith("--")) {

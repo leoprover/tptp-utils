@@ -89,8 +89,8 @@ object Linter {
             case "$quantification" =>
               buffer.appendAll(lintModalLogicConfigStandardEntry("$quantification", Seq("$varying", "$constant", "$cumulative", "$decreasing"), right))
               quantificationSpecified = true
-            case "$rigidity" =>
-              buffer.appendAll(lintModalLogicConfigStandardEntry("$rigidity", Seq("$rigid", "$flexible"), right))
+            case "$constants" =>
+              buffer.appendAll(lintModalLogicConfigStandardEntry("$constants", Seq("$rigid", "$flexible"), right))
               rigiditySpecified = true
             case _ => buffer.append(error(s"Unknown parameter name $parameter for modal logic specification."))
           }
@@ -100,7 +100,7 @@ object Linter {
       }
       if (!modalitiesSpecified) buffer.append(error("Modal logic specification incomplete: $modalities entry missing."))
       if (!quantificationSpecified) buffer.append(error("Modal logic specification incomplete: $quantification entry missing."))
-      if (!rigiditySpecified) buffer.append(error("Modal logic specification incomplete: $rigidity entry missing."))
+      if (!rigiditySpecified) buffer.append(error("Modal logic specification incomplete: $constants entry missing."))
       if (!consequenceSpecified) buffer.append(error("Modal logic specification incomplete: $consequence entry missing."))
       buffer.toSeq
     case _ => Seq(error(s"Malformed logic specification: ${formula.pretty}"))
