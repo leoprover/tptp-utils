@@ -45,7 +45,7 @@ object Linter {
         Seq(error("Logic specifications are only supported for TFF and THF, but TPI was given."))
     }
   }
-  private[this] def lintLogicSpecTHFFormula(formula: THF.Statement): Seq[String] = formula match {
+  private[this] final def lintLogicSpecTHFFormula(formula: THF.Statement): Seq[String] = formula match {
     case THF.Logical(THF.BinaryFormula(THF.==, ft@THF.FunctionTerm(logicName, Seq()), right)) =>
       if (ft.isDefinedFunction) {
         logicName match {
@@ -53,10 +53,10 @@ object Linter {
           case _ => Seq(info(s"Logic $logicName is unknown, cannot analyze its specification; skipping."))
         }
       } else if (ft.isSystemFunction) Seq(info(s"$logicName is a system-defined logic, cannot analyze its specification; skipping."))
-      else Seq(error(s"Logic names on the LHS of a logic specification formulas must be defined names or system names, but ${logicName} is given."))
+      else Seq(error(s"Logic names on the LHS of a logic specification formulas must be defined names or system names, but $logicName is given."))
     case _ => Seq(error(s"Malformed logic specification: ${formula.pretty}"))
   }
-  private[this] def lintLogicSpecTFFFormula(formula: TFF.Statement): Seq[String] = formula match {
+  private[this] final def lintLogicSpecTFFFormula(formula: TFF.Statement): Seq[String] = formula match {
     case TFF.Logical(TFF.MetaIdentity(ft@TFF.AtomicTerm(logicName, Seq()), rhs)) =>
       if (ft.isDefinedFunction) {
         logicName match {
@@ -66,25 +66,114 @@ object Linter {
           case _ => Seq(info(s"Logic $logicName is unknown, cannot analyze its specification; skipping."))
         }
       } else if (ft.isSystemFunction) Seq(info(s"$logicName is a system-defined logic, cannot analyze its specification; skipping."))
-      else Seq(error(s"Logic names on the LHS of a logic specification formulas must be defined names or system names, but ${logicName} is given."))
+      else Seq(error(s"Logic names on the LHS of a logic specification formulas must be defined names or system names, but $logicName is given."))
     case _ => Seq(error(s"Malformed logic specification: ${formula.pretty}"))
   }
 
-  private[this] def lintModalLogicConfig(formula: THF.Formula): Seq[String] = formula match {
+  private[this] final def lintModalLogicConfig(formula: THF.Formula): Seq[String] = formula match {
     case THF.Tuple(elements) =>
       val buffer: collection.mutable.Buffer[String] = collection.mutable.Buffer.empty
       var modalitiesSpecified = false
       var quantificationSpecified = false
       var rigiditySpecified = false
       var consequenceSpecified = false
-      elements.foreach { elem =>
-        ???
+      elements.foreach {
+        case THF.BinaryFormula(THF.==, left, right) => left match {
+          case ft@THF.FunctionTerm(parameter, Seq()) if ft.isDefinedFunction => parameter match {
+            case "$consequence" =>
+              buffer.appendAll(lintModalLogicConfigStandardEntry("$consequence", Seq("$local", "$global"), right))
+              consequenceSpecified = true
+            case "$modalities" =>
+              buffer.appendAll(lintModalLogicConfigModalitiesEntry(right))
+              modalitiesSpecified = true
+            case "$quantification" =>
+              buffer.appendAll(lintModalLogicConfigStandardEntry("$quantification", Seq("$varying", "$constant", "$cumulative", "$decreasing"), right))
+              quantificationSpecified = true
+            case "$rigidity" =>
+              buffer.appendAll(lintModalLogicConfigStandardEntry("$rigidity", Seq("$rigid", "$flexible"), right))
+              rigiditySpecified = true
+            case _ => buffer.append(error(s"Unknown parameter name $parameter for modal logic specification."))
+          }
+          case _ => buffer.append(error(s"Malformed logic specification parameter ${left.pretty}, only defined words are allowed."))
+        }
+        case x => buffer.append(error(s"Unknown logic specification entry for modal logic: ${x.pretty}"))
       }
-      if (!modalitiesSpecified) error("Modal logic specification incomplete: $modalities entry missing.")
-      if (!quantificationSpecified) error("Modal logic specification incomplete: $quantification entry missing.")
-      if (!rigiditySpecified) error("Modal logic specification incomplete: $rigidity entry missing.")
-      if (!consequenceSpecified) error("Modal logic specification incomplete: $consequence entry missing.")
+      if (!modalitiesSpecified) buffer.append(error("Modal logic specification incomplete: $modalities entry missing."))
+      if (!quantificationSpecified) buffer.append(error("Modal logic specification incomplete: $quantification entry missing."))
+      if (!rigiditySpecified) buffer.append(error("Modal logic specification incomplete: $rigidity entry missing."))
+      if (!consequenceSpecified) buffer.append(error("Modal logic specification incomplete: $consequence entry missing."))
       buffer.toSeq
     case _ => Seq(error(s"Malformed logic specification: ${formula.pretty}"))
+  }
+  @inline private[this] final def lintModalLogicConfigStandardEntry(name: String, allowedValues: Seq[String], right: THF.Formula): Seq[String] = {
+    val buffer: collection.mutable.Buffer[String] = collection.mutable.Buffer.empty
+    var defaultValue = false
+    right match {
+      case THF.FunctionTerm(arg, Seq()) => arg match {
+        case _ if allowedValues.contains(arg) => ()
+        case _ => buffer.append(error(s"Unknown argument $arg to parameter $name."))
+      }
+      case THF.Tuple(elements) => elements.foreach {
+        case THF.FunctionTerm(arg, Seq()) => arg match {
+          case _ if allowedValues.contains(arg) =>
+            if (defaultValue) buffer.append(warning(s"Duplicated default value for $name. It's not clear what default value the ATP system will use; remove all except one."))
+            else defaultValue = true
+          case _ => buffer.append(error(s"Unknown argument $arg to parameter $name."))
+        }
+        case THF.BinaryFormula(THF.==, THF.FunctionTerm(identifier, Seq()), THF.FunctionTerm(arg, Seq())) => arg match {
+          case _ if allowedValues.contains(arg) => ()
+          case _ => buffer.append(error(s"Unknown argument $arg to parameter $name for item $identifier."))
+        }
+        case x => buffer.append(error(s"Unknown argument ${x.pretty} to parameter $name."))
+      }
+    }
+    buffer.toSeq
+  }
+  @inline private[this] final def lintModalLogicConfigModalitiesEntry(right: THF.Formula): Seq[String] = {
+    val buffer: collection.mutable.Buffer[String] = collection.mutable.Buffer.empty
+    val name = "$modalities"
+    var defaultValue = false
+    right match {
+      case THF.FunctionTerm(arg, Seq()) => arg match {
+        case _ if arg.startsWith("$modal_system_") => ()
+        case _ => buffer.append(error(s"Unknown argument $arg to parameter $name."))
+      }
+      case THF.Tuple(elements) => elements.foreach {
+        case THF.FunctionTerm(arg, Seq()) => arg match {
+          case _ if arg.startsWith("$modal_system_") =>
+            if (defaultValue) buffer.append(warning(s"Duplicated default value for $name. It's not clear what default value the ATP system will use; remove all except one."))
+            else defaultValue = true
+          case _ if arg.startsWith("$modal_axiom_") => ()
+          case _ => buffer.append(error(s"Unknown argument $arg to parameter $name."))
+        }
+        case THF.BinaryFormula(THF.==, op@THF.ConnectiveTerm(conn), rhs) =>
+          conn match {
+            case THF.NonclassicalLongOperator(connName, params) if Seq("$box", "$diamond").contains(connName) =>
+              params match {
+                case Seq(Left(_)) => ()
+                case Seq() => buffer.append(error("Assigning properties to non-indexed modal operator, use parameter default value for this."))
+                case _ => buffer.append(error(s"Malformed arguments to modal operator ${op.pretty}, use parameter default value for this."))
+              }
+            case THF.NonclassicalBox(idx) => idx match {
+              case Some(_) => ()
+              case None => buffer.append(error("Assigning properties to non-indexed modal operator, use parameter default value for this."))
+            }
+            case THF.NonclassicalDiamond(idx) => idx match {
+              case Some(_) => ()
+              case None => buffer.append(error("Assigning properties to non-indexed modal operator, use parameter default value for this."))
+            }
+          }
+          rhs match {
+            case THF.FunctionTerm(system, Seq()) if system.startsWith("$modal_system_") => ()
+            case THF.Tuple(elements0) => elements0.foreach {
+              case THF.FunctionTerm(axiom, Seq()) if axiom.startsWith("$modal_axiom_") => ()
+              case x => buffer.append(error(s"Unknown or malformed argument ${x.pretty} to parameter $name for item ${op.pretty}."))
+            }
+            case _ => buffer.append(error(s"Unknown or malformed argument ${rhs.pretty} to parameter $name for item ${op.pretty}."))
+          }
+        case x => buffer.append(error(s"Unknown argument ${x.pretty} to parameter $name."))
+      }
+    }
+    buffer.toSeq
   }
 }
