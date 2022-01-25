@@ -126,6 +126,7 @@ object Linter {
         }
         case x => buffer.append(error(s"Unknown argument ${x.pretty} to parameter $name."))
       }
+      case x => buffer.append(error(s"Unknown argument ${x.pretty} to parameter $name."))
     }
     buffer.toSeq
   }
@@ -162,6 +163,7 @@ object Linter {
               case Some(_) => ()
               case None => buffer.append(error("Assigning properties to non-indexed modal operator, use parameter default value for this."))
             }
+            case _ => buffer.append(error(s"Assigning properties '${rhs.pretty}' to classical operator ${conn.pretty}."))
           }
           rhs match {
             case THF.FunctionTerm(system, Seq()) if system.startsWith("$modal_system_") => ()
@@ -173,6 +175,7 @@ object Linter {
           }
         case x => buffer.append(error(s"Unknown argument ${x.pretty} to parameter $name."))
       }
+      case _ => buffer.append(error(s"Malformed argument ${right.pretty} to parameter $name."))
     }
     buffer.toSeq
   }
