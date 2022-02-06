@@ -100,7 +100,7 @@ object TPTPUtilsApp {
 
   def tptpProblemToString(problem: Problem): String = {
     val sb: StringBuilder = new StringBuilder()
-    problem.includes foreach { case (file, selection) =>
+    problem.includes foreach { case (file, (selection, _)) =>
       if (selection.isEmpty) sb.append(s"include('$file').\n")
       else sb.append(s"include('$file', ${selection.mkString("[",",","]")}).\n")
     }

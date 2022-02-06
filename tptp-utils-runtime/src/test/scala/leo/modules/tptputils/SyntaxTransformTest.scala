@@ -15,11 +15,11 @@ class SyntaxTransformTest extends AnyFunSuite {
         |%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         |
         |%--- logic specification
-        |tff(spec, logic, ( $modal := [
-        |   $constants := $rigid,
-        |   $quantification := $constant,
-        |   $consequence := $global,
-        |   $modalities := $modal_system_S5  ] )).
+        |tff(spec, logic, ( $modal == [
+        |   $constants == $rigid,
+        |   $quantification == $constant,
+        |   $consequence == $global,
+        |   $modalities == $modal_system_S5  ] )).
         |
         |%--- does ϕ → □◇ϕ hold?
         |tff(mysterious, conjecture, ![A:$o]: (A => ($box($dia(A)))) ).""".stripMargin
@@ -146,11 +146,11 @@ class SyntaxTransformTest extends AnyFunSuite {
         |%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         |
         |%--- logic specification
-        |tff(spec, logic, ( $modal := [
-        |   $constants := $rigid,
-        |   $quantification := $constant,
-        |   $consequence := $global,
-        |   $modalities := $modal_system_S5  ] )).
+        |tff(spec, logic, ( $modal == [
+        |   $constants == $rigid,
+        |   $quantification == $constant,
+        |   $consequence == $global,
+        |   $modalities == $modal_system_S5  ] )).
         |
         |%--- does ϕ → □◇ϕ hold?
         |tff(mysterious, conjecture, ![A:$o]: (A => ([#a](<#b>(A)))) ).""".stripMargin
@@ -179,7 +179,7 @@ class SyntaxTransformTest extends AnyFunSuite {
 
   test("SYN000_1 to THF") {
     val res = Parser.problem(io.Source.fromResource("SYN000_1.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -189,7 +189,7 @@ class SyntaxTransformTest extends AnyFunSuite {
   }
   test("SYN000_2 to THF") {
     val res = Parser.problem(io.Source.fromResource("SYN000_2.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)}, Map.empty)
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -199,7 +199,7 @@ class SyntaxTransformTest extends AnyFunSuite {
   }
   test("SYN000_3 to THF") {
     val res = Parser.problem(io.Source.fromResource("SYN000_3.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -214,7 +214,7 @@ class SyntaxTransformTest extends AnyFunSuite {
     println("########################")
     println(res.formulas.map(_.toString).mkString("\n"))
     println("########################")
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.TFFAnnotated(_,_,_,_) => SyntaxTransform.tffToTHF(f)}, Map.empty )
     println(res2.pretty)
     println("########################")
     println(res2.formulas.map(_.toString).mkString("\n"))
@@ -227,7 +227,7 @@ class SyntaxTransformTest extends AnyFunSuite {
 
   test("SYN000+1 to THFF") {
     val res = Parser.problem(io.Source.fromResource("SYN000+1.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.FOFAnnotated(_,_,_,_) => SyntaxTransform.fofToTFF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.FOFAnnotated(_,_,_,_) => SyntaxTransform.fofToTFF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -238,7 +238,7 @@ class SyntaxTransformTest extends AnyFunSuite {
 
   test("SYN000+2 to TFF") {
     val res = Parser.problem(io.Source.fromResource("SYN000+2.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.FOFAnnotated(_,_,_,_) => SyntaxTransform.fofToTFF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.FOFAnnotated(_,_,_,_) => SyntaxTransform.fofToTFF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -249,7 +249,7 @@ class SyntaxTransformTest extends AnyFunSuite {
 
   test("SYN000-1 to FOF") {
     val res = Parser.problem(io.Source.fromResource("SYN000-1.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToFOF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToFOF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -260,7 +260,7 @@ class SyntaxTransformTest extends AnyFunSuite {
 
   test("SYN000-2 to FOF") {
     val res = Parser.problem(io.Source.fromResource("SYN000-2.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToFOF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToFOF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)
@@ -271,7 +271,7 @@ class SyntaxTransformTest extends AnyFunSuite {
 
   test("SYN000-2 to TFF") {
     val res = Parser.problem(io.Source.fromResource("SYN000-2.tptp"))
-    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToTFF(f)} )
+    val res2 = TPTP.Problem(res.includes, res.formulas.map {case f@TPTP.CNFAnnotated(_,_,_,_) => SyntaxTransform.cnfToTFF(f)}, Map.empty )
     println(res2.pretty)
     try {
       Parser.problem(res2.pretty)

@@ -15,8 +15,8 @@ object ParseTree {
   }
 
   private[this] final def include(include: TPTP.Include): String = {
-    if (include._2.isEmpty) s"{ type : 'include', file : '${include._1}' }"
-    else s"{ type : 'include', file : '${include._1}', selection : ${include._2.mkString("[", ",", "]")} }"
+    if (include._2._1.isEmpty) s"{ type : 'include', file : '${include._1}' }"
+    else s"{ type : 'include', file : '${include._1}', selection : ${include._2._1.mkString("[", ",", "]")} }"
   }
 
   private[this] final def annotatedFormula(annotatedFormula: TPTP.AnnotatedFormula): String = {

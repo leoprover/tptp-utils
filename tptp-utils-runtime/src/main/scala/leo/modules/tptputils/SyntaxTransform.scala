@@ -82,8 +82,8 @@ object SyntaxTransform {
     }
     if (goalLanguage == TPTP.AnnotatedFormula.FormulaType.THF && addMissingTypeDeclarations) {
       val specs = generateMissingTypeDeclarations(problem.formulas)
-      TPTP.Problem(problem.includes, specs ++ transformedFormulas)
-    } else TPTP.Problem(problem.includes, transformedFormulas)
+      TPTP.Problem(problem.includes, specs ++ transformedFormulas, problem.formulaComments)
+    } else TPTP.Problem(problem.includes, transformedFormulas, problem.formulaComments)
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,6 +141,7 @@ object SyntaxTransform {
             THF.NonclassicalLongOperator(name, parameters0)
           case TFF.NonclassicalBox(index) => THF.NonclassicalBox(index.map(tffTermToTHF))
           case TFF.NonclassicalDiamond(index) => THF.NonclassicalDiamond(index.map(tffTermToTHF))
+          case TFF.NonclassicalCone(index) => THF.NonclassicalCone(index.map(tffTermToTHF))
         }
         args.foldLeft[THF.Formula](THF.ConnectiveTerm(connective0)) { case (expr, arg) => THF.BinaryFormula(THF.App, expr, tffLogicFormulaToTHF(arg)) }
     }
