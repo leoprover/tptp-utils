@@ -6,6 +6,19 @@ package object tptputils {
 
   class TPTPTransformException(message: String) extends RuntimeException(message)
 
+  /** Returns true iff `role` does not contain a subrole (i.e., role followed by dash followed by general term). */
+  final def isSimpleRole(role: String): Boolean = !role.contains("-")
+  /** Returns true iff `role` does contain a subrole (i.e., role followed by dash followed by general term). */
+  final def isComplexRole(role: String): Boolean = !isSimpleRole(role)
+  /** Returns None iff `role` is a simple role; otherwise the subrole part of the role. */
+  final def getSubrole(role: String): Option[String] = if (isComplexRole(role)) {
+    Some(roleSplit(role)._2.tail)
+  } else None
+  /** Returns the non-subrole part of the role. If no subrole-part exists, the role itself it returned. */
+  final def toSimpleRole(role: String): String = roleSplit(role)._1
+  // roleSplit("<prefix>-<suffix>") gives ("<prefix>", "-<suffix>"), i.e., the dash is still in there.
+  private[this] final def roleSplit(role: String): (String, String) = role.span(_ != '-')
+
   final def isMoreGeneralThan(a: FormulaType.FormulaType, b: FormulaType.FormulaType): Boolean = {
     import FormulaType._
     a match {
