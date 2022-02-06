@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   organization := "org.leo",
-  scalaVersion := "2.13.7",
+  scalaVersion := "2.13.8",
   scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -26,7 +26,7 @@ lazy val tptpUtilsRuntime = (project in file("tptp-utils-runtime"))
     assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false),
     test in assembly := {},
     assemblyJarName in assembly := s"${name.value}-${version.value}.jar",
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.4",
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.5",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test"
 	)
 
@@ -39,6 +39,6 @@ lazy val tptpUtilsApp = (project in file("tptp-utils-app"))
     mainClass in assembly := Some("leo.modules.TPTPUtilsApp"),
     test in assembly := {},
     assemblyJarName in assembly := s"${name.value}-${version.value}.jar",
-    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.4",
+    libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.5",
 	  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test"
 	).dependsOn(tptpUtilsRuntime)
