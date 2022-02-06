@@ -361,7 +361,7 @@ object SyntaxTransform {
     import scala.collection.mutable
     val symbolsWithType: mutable.Set[String] = mutable.Set.empty
     val symbolsMap: mutable.Map[String, TPTP.AnnotatedFormula] = mutable.Map.empty
-    originalFormulas foreach {
+    originalFormulas.filterNot(_.role == "logic") foreach {
       case TPTP.THFAnnotated(_, "type", TPTP.THF.Typing(s, _), _) => symbolsWithType += s
       case TPTP.TFFAnnotated(_, "type", TPTP.TFF.Typing(s, _), _) => symbolsWithType += s
       case f =>
@@ -387,10 +387,10 @@ object SyntaxTransform {
       case TPTP.FOFAnnotated(_, _, TPTP.FOF.Logical(formula), _) => getTypeFromFOFFormula(symbol, formula)
       case TPTP.TCFAnnotated(_, _, TPTP.TCF.Logical(formula), _) => getTypeFromTCFFormula(symbol, formula)
       case TPTP.CNFAnnotated(_, _, TPTP.CNF.Logical(formula), _) => getTypeFromCNFFormula(symbol, formula)
-      case _ => throw new TPTPTransformException("unexpected")
+      case _ => throw new TPTPTransformException(s"unexpected format: getTypeFromSymbolOccurence(symbol = '$symbol', formula = ${formula.pretty})")
     }
     if (result.isDefined) result.get
-    else throw new TPTPTransformException("unexpected")
+    else throw new TPTPTransformException(s"unexpected none result: getTypeFromSymbolOccurence(symbol = '$symbol', formula = ${formula.pretty})")
   }
 
   private[this] def getTypeFromTFFFormula(symbol: String, formula: TPTP.TFF.Formula): Option[TPTP.THF.Type] = {
