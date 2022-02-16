@@ -158,6 +158,14 @@ class SyntaxTransformTest extends AnyFunSuite {
     println(SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.THF, res).pretty)
   }
 
+  test("test3") {
+    val input =
+      """
+        |tff(a, axiom, [a,b,c] --> [d,e,f]).""".stripMargin
+    val res = Parser.problem(input)
+    println(SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.THF, res, addMissingTypeDeclarations = false).pretty)
+  }
+
   test("SYN000_4 to THF") {
     val res = Parser.problem(io.Source.fromResource("SYN000_4.tptp"))
     val res2 = SyntaxTransform.transformProblem(TPTP.AnnotatedFormula.FormulaType.THF, res)

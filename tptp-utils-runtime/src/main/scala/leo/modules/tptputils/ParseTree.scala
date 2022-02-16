@@ -34,6 +34,7 @@ object ParseTree {
 
   private[this] final def thfStatement(statement: TPTP.THF.Statement): String = statement match {
     case THF.Typing(atom, typ) => s"{ type : 'typing' , name : '$atom' , body : [${thfFormula(typ)}] }"
+    case THF.Sequent(lhs, rhs) => s"{ type : 'sequent', left: [${lhs.map(thfFormula).mkString(",")}], right: [${rhs.map(thfFormula).mkString(",")}] }"
     case THF.Logical(formula) => thfFormula(formula)
   }
   private[this] final def thfFormula(formula: TPTP.THF.Formula): String = formula match {
@@ -53,6 +54,7 @@ object ParseTree {
 
   private[this] final def tffStatement(tffStatement: TPTP.TFF.Statement): String = tffStatement match {
     case TFF.Typing(atom, typ) => s"{ type : 'typing', name : '$atom', body : [${tffType(typ)}] }"
+    case TFF.Sequent(lhs, rhs) => s"{ type : 'sequent', left: [${lhs.map(tffTerm).mkString(",")}], right: [${rhs.map(tffTerm).mkString(",")}] }"
     case TFF.Logical(formula) => tffFormula(formula)
   }
   private[this] final def tffFormula(formula: TPTP.TFF.Formula): String = formula match {

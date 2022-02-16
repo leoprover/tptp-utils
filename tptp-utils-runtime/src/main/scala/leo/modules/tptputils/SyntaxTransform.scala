@@ -96,6 +96,7 @@ object SyntaxTransform {
     import TPTP.{TFF, THF}
     statement match {
       case TFF.Typing(atom, typ) => THF.Typing(atom, tffTypeToTHF(typ))
+      case TFF.Sequent(lhs, rhs) => THF.Sequent(lhs.map(tffTermToTHF), rhs.map(tffTermToTHF))
       case TFF.Logical(formula) => THF.Logical(tffLogicFormulaToTHF(formula))
     }
   }
