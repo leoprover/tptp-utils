@@ -2,6 +2,8 @@ package leo.modules.tptputils
 
 import leo.datastructures.TPTP
 
+import scala.annotation.tailrec
+
 object SyntaxDowngrade {
   @inline final def thfToTFF(thf: TPTP.THFAnnotated): TPTP.TFFAnnotated =
     TPTP.TFFAnnotated(thf.name, thf.role, thfStatementToTFF(thf.formula), thf.annotations)
@@ -94,19 +96,26 @@ object SyntaxDowngrade {
           case THF.~ => TFF.~
         }
         TFF.UnaryFormula(convertedConnective, thfLogicFormulaToTFFFormula(body))
-      case THF.BinaryFormula(THF.App, left, right) =>
-        left match {
+      case f@THF.BinaryFormula(THF.App, _, _) =>
+        val (function, arguments) = collectApplicationArguments(f, Seq.empty)
+
+        function match {
+          case THF.FunctionTerm(f, Seq()) => TFF.AtomicFormula(f, arguments.map(thfLogicFormulaToTFFTerm))
           case THF.ConnectiveTerm(conn) =>
-            conn match {
-              case THF.NonclassicalLongOperator(name, params) => ???
-              case THF.NonclassicalBox(idx) => ???
-              case THF.NonclassicalDiamond(idx) => ???
-              case THF.NonclassicalCone(idx) => ???
+            val convertedConnective = conn match {
+              case THF.NonclassicalLongOperator(name, params) =>
+                val convertedParams = params.map {
+                  case Left(value) => Left(thfLogicFormulaToTFFTerm(value))
+                  case Right((l,r)) => Right((thfLogicFormulaToTFFTerm(l), thfLogicFormulaToTFFTerm(r)))
+                }
+                TFF.NonclassicalLongOperator(name,  convertedParams)
+              case THF.NonclassicalBox(idx) => TFF.NonclassicalBox(idx.map(thfLogicFormulaToTFFTerm))
+              case THF.NonclassicalDiamond(idx) => TFF.NonclassicalDiamond(idx.map(thfLogicFormulaToTFFTerm))
+              case THF.NonclassicalCone(idx) => TFF.NonclassicalCone(idx.map(thfLogicFormulaToTFFTerm))
             }
-          case _ => ???
+            TFF.NonclassicalPolyaryFormula(convertedConnective, arguments.map(thfLogicFormulaToTFFFormula))
+          case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
         }
-        // TODO
-        ???
       case THF.BinaryFormula(connective, left, right) =>
         connective match {
           case THF.Eq =>
@@ -152,8 +161,37 @@ object SyntaxDowngrade {
       case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
     }
   }
+  @tailrec  final def collectApplicationArguments(term: TPTP.THF.BinaryFormula, acc: Seq[TPTP.THF.Formula]): (TPTP.THF.Formula, Seq[TPTP.THF.Formula]) = {
+    import TPTP.THF
+    term.left match {
+      case f@THF.BinaryFormula(THF.App, _, _) => collectApplicationArguments(f, term.right +: acc)
+      case _ => (term.left, term.right +: acc)
+    }
+  }
 
-  final def thfLogicFormulaToTFFTerm(formula: TPTP.THF.Formula): TPTP.TFF.Term = ???
+  final def thfLogicFormulaToTFFTerm(term: TPTP.THF.Formula): TPTP.TFF.Term = {
+    import TPTP.{THF, TFF}
+    term match {
+      case THF.FunctionTerm(f, args) => TFF.AtomicTerm(f, args.map(thfLogicFormulaToTFFTerm))
+      case THF.Variable(name) => TFF.Variable(name)
+      case f@THF.BinaryFormula(THF.App, _, _) =>
+        val (function, arguments) = collectApplicationArguments(f, Seq.empty)
+        function match {
+          case THF.FunctionTerm(f, Seq()) => TFF.AtomicTerm(f, arguments.map(thfLogicFormulaToTFFTerm))
+          case _ => throw new IllegalArgumentException(s"Unsupported term in downgrade: ${term.pretty}")
+        }
+
+      case THF.QuantifiedFormula(_, _, _) | THF.UnaryFormula(_, _) | THF.BinaryFormula(_, _, _) | THF.ConditionalTerm(_, _, _) | THF.LetTerm(_, _, _) =>
+        TFF.FormulaTerm(thfLogicFormulaToTFFFormula(term))
+
+      case THF.Tuple(elements) => TFF.Tuple(elements.map(thfLogicFormulaToTFFTerm))
+      case THF.DistinctObject(name) => TFF.DistinctObject(name)
+      case THF.NumberTerm(value) => TFF.NumberTerm(value)
+
+      case _ => throw new IllegalArgumentException(s"Unsupported term in downgrade: ${term.pretty}")
+
+    }
+  }
 
   final def thfTypeToTFF(typ: TPTP.THF.Type): TPTP.TFF.Type = {
     import TPTP.{THF, TFF}
@@ -190,7 +228,7 @@ object SyntaxDowngrade {
       case _ => throw new IllegalArgumentException(s"Unsupported type in downgrade: ${typ.pretty}")
     }
   }
-  private final def collectMappingTypes(ty: TPTP.THF.BinaryFormula, acc: Seq[TPTP.THF.Type]): (Seq[TPTP.THF.Type], TPTP.THF.Type) = {
+  @tailrec  final def collectMappingTypes(ty: TPTP.THF.BinaryFormula, acc: Seq[TPTP.THF.Type]): (Seq[TPTP.THF.Type], TPTP.THF.Type) = {
     import TPTP.THF
     ty.right match {
       case f@THF.BinaryFormula(THF.FunTyConstructor, _, _) => collectMappingTypes(f, acc :+ ty.left)
