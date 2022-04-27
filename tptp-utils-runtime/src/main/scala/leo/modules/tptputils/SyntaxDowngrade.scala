@@ -112,6 +112,7 @@ object SyntaxDowngrade {
               case THF.NonclassicalBox(idx) => TFF.NonclassicalBox(idx.map(thfLogicFormulaToTFFTerm))
               case THF.NonclassicalDiamond(idx) => TFF.NonclassicalDiamond(idx.map(thfLogicFormulaToTFFTerm))
               case THF.NonclassicalCone(idx) => TFF.NonclassicalCone(idx.map(thfLogicFormulaToTFFTerm))
+              case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
             }
             TFF.NonclassicalPolyaryFormula(convertedConnective, arguments.map(thfLogicFormulaToTFFFormula))
           case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
