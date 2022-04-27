@@ -73,6 +73,10 @@ object SyntaxTransform {
     }
   }
 
+  @inline final def apply(goalLanguage: TPTP.AnnotatedFormula.FormulaType.FormulaType,
+                            problem: TPTP.Problem,
+                            addMissingTypeDeclarations: Boolean = true): TPTP.Problem = transformProblem(goalLanguage, problem, addMissingTypeDeclarations)
+
   final def transformProblem(goalLanguage: TPTP.AnnotatedFormula.FormulaType.FormulaType,
                              problem: TPTP.Problem,
                              addMissingTypeDeclarations: Boolean = true): TPTP.Problem = {

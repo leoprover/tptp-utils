@@ -5,6 +5,8 @@ import leo.datastructures.TPTP.{CNF, FOF, TCF, TFF, THF}
 
 object ParseTree {
 
+  @inline final def apply(problem: TPTP.Problem): String = toJSON(problem)
+
   final def toJSON(problem: TPTP.Problem): String = {
     val sb: StringBuilder = new StringBuilder()
     sb.append("[\n")
