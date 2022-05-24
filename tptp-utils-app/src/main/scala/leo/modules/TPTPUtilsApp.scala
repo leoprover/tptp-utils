@@ -173,8 +173,21 @@ object TPTPUtilsApp {
         |               The goal language is specified as a mandatory command parameter
         |               using one of the following values:
         |               --TFF
+        |
         |  lint         Inspect the input problem for suspicious constructs, unused symbols,
         |               malformed logic specifications, etc.
+        |
+        |  import       Translate, if possible, the input file into an adequate TPTP
+        |               representation.
+        |
+        |               The source language is specified as a mandatory command parameter:
+        |               --LRML   (for import from LegalRuleML)
+        |
+        |  export       Translate, if possible, the TPTP file into an adequate representation
+        |               in the goal language.
+        |
+        |               The goal language is specified as a mandatory command parameter:
+        |               --LRML   (for export to LegalRuleML)
         |
         | Options:
         |  --tstp       Enable TSTP-compatible output: The output in <output file>
