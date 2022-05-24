@@ -63,7 +63,8 @@ object TPTPUtilsApp {
             val result = lint.mkString("\n")
             generateResult(result, "Success", "LogicalData")
           case Import(from) =>
-            tptputils.Import(infile.get, from)
+            val result = tptputils.Import(infile.get, from)
+            generateResult(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Export(to) => ???
         }
         outfile.get.print(result)
