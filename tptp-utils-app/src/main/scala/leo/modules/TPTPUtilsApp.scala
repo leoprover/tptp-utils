@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.Problem
-import leo.modules.tptputils.{ParseTree, SyntaxTransform, SyntaxDowngrade, Linter}
+import leo.modules.tptputils.{Linter, ParseTree, SyntaxDowngrade, SyntaxTransform}
 import leo.modules.input.TPTPParser
 
 import scala.io.Source
@@ -37,29 +37,34 @@ object TPTPUtilsApp {
         // Read input
         infile = Some(if (inputFileName == "-") io.Source.stdin else io.Source.fromFile(inputFileName))
         // Parse input
-        val parsedInput = TPTPParser.problem(infile.get)
         val result = command.get match {
           case Parse =>
-            // If we ended up here, parsing was succesful.
+            TPTPParser.problem(infile.get)
             generateResult("", "Success", "")
           case Reparse =>
-            // If we ended up here, parsing was succesful.
+            val parsedInput = TPTPParser.problem(infile.get)
             val json: String = ParseTree(parsedInput)
             generateResult(json, "Success", "LogicalData")
           case Transform(goal) =>
+            val parsedInput = TPTPParser.problem(infile.get)
             val transformed = SyntaxTransform(goal, parsedInput)
             generateResult(tptpProblemToString(transformed), "Success", "ListOfFormulae")
           case Downgrade(goal) =>
             try {
+              val parsedInput = TPTPParser.problem(infile.get)
               val transformed = SyntaxDowngrade(goal, parsedInput)
               generateResult(tptpProblemToString(transformed), "Success", "ListOfFormulae")
             } catch {
               case e: IllegalArgumentException => generateResult("", "InputError", "", e.getMessage)
             }
           case Lint =>
+            val parsedInput = TPTPParser.problem(infile.get)
             val lint = Linter(parsedInput)
             val result = lint.mkString("\n")
             generateResult(result, "Success", "LogicalData")
+          case Import(from) =>
+            tptputils.Import(infile.get, from)
+          case Export(to) => ???
         }
         outfile.get.print(result)
         outfile.get.flush()
@@ -199,12 +204,14 @@ object TPTPUtilsApp {
         |""".stripMargin)
   }
 
-  sealed abstract class Command
+  protected sealed abstract class Command
   final case object Parse extends Command
   final case object Reparse extends Command
   final case class  Transform(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
   final case class  Downgrade(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
   final case object Lint extends Command
+  final case class  Import(from: tptputils.ExternalLanguage) extends Command
+  final case class  Export(to: tptputils.ExternalLanguage) extends Command
 
   private[this] final def parseArgs(args: Seq[String]): Unit = {
     var args0 = args
@@ -236,6 +243,30 @@ object TPTPUtilsApp {
             Downgrade(TPTP.AnnotatedFormula.FormulaType.withName(param.drop(2)))
           } else {
             throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --TFF.")
+          }
+        case "import" =>
+          val param = args0.tail.head
+          if (param.startsWith("--")) {
+            args0 = args0.tail
+            val lang = param.drop(2) match {
+              case "LRML" => tptputils.LegalRuleML
+              case _ => throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
+            }
+            Import(lang)
+          } else {
+            throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
+          }
+        case "export" =>
+          val param = args0.tail.head
+          if (param.startsWith("--")) {
+            args0 = args0.tail
+            val lang = param.drop(2) match {
+              case "LRML" => tptputils.LegalRuleML
+              case _ => throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
+            }
+            Export(lang)
+          } else {
+            throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
           }
         case _ => throw new IllegalArgumentException(s"Unknown command '$hd'.")
       }
