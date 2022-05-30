@@ -6,11 +6,13 @@ import leo.modules.tptputils
 object Import {
   final def apply(file: io.Source, from: ExternalLanguage): TPTP.Problem = {
     from match {
-      case tptputils.LegalRuleML => LegalRuleMLImport(file)
+      case tptputils.LegalRuleML => new LegalRuleMLImport().apply(file)
     }
   }
 
-  final object LegalRuleMLImport {
+  final class LegalRuleMLImport {
+    private var counter = 1
+    private def generateName(): String = { val name = s"'formula_$counter'"; counter += 1; name  }
     private def lrml(elem: xml.Node): Boolean = elem.prefix == "lrml"
 
     def apply(file: io.Source): TPTP.Problem = {
@@ -18,7 +20,7 @@ object Import {
         val topNode = xml.XML.load(new SourceInputStream(file))
         lrmlFile(topNode)
       } catch {
-      case e: Throwable => throw e; //throw new IllegalArgumentException(e.toString)
+      case e: Throwable => throw new IllegalArgumentException(e.toString)
       }
     }
 
@@ -26,27 +28,71 @@ object Import {
         // Check if it's LegalRuleML
         if (node.label == "LegalRuleML" && node.prefix == "lrml") {
           // Then we process all the meta-data
-          val legalReferenceBlocks = (node \ "LegalReferences").filter(lrml)
-          println(legalReferenceBlocks.toString())
+          val references: collection.mutable.Map[String, String] = collection.mutable.Map.empty
+          val legalReferenceBlocks = ((node \ "LegalReferences") ++ (node \ "References")).filter(lrml)
+          legalReferenceBlocks.foreach { refBlock =>
+            references.addAll(lrmlRefBlock(refBlock))
+          }
+//          println(references.toString())
 
           // Then we process associations
+          val associationsFormulaToRef: collection.mutable.Map[String, Seq[String]] = collection.mutable.Map.empty
           val associationBlocks = (node \ "Associations").filter(lrml)
-          println(associationBlocks.toString())
+          associationBlocks.foreach { assocBlock =>
+            associationsFormulaToRef.addAll(lrmlAssocBlock(assocBlock))
+          }
+//          println(associationsFormulaToRef.toString())
+          val associations = associationsFormulaToRef.toMap
 
           // Then we process statements
           val statementBlocks = (node \ "Statements").filter(lrml)
-          println(statementBlocks.toString())
+//          println(statementBlocks.toString())
           val translatedStatements = statementBlocks.map { block =>
-            lrmlStatements(block)
+            lrmlStatements(block, associations)
           }
 
           TPTP.Problem(Seq.empty, translatedStatements.flatten, Map.empty)
         } else throw new IllegalArgumentException(s"Invalid or incorrect LegalRuleML file provided.")
     }
 
-    private[this] def lrmlStatements(elem: xml.Node): Seq[TPTP.AnnotatedFormula] = {
+    private[this] def lrmlRefBlock(elem: xml.Node): Map[String, String] = {
+      val refs = ((elem \ "LegalReference") ++ (elem \ "Reference")).filter(lrml)
+      refs.flatMap { e =>
+        val ref = e.attribute("refersTo")
+        val id = e.attribute("refID")
+        if (ref.isEmpty || id.isEmpty) None
+        else Some(ref.get.head.text, id.get.head.text)
+      }.toMap
+    }
+
+    private[this] def lrmlAssocBlock(elem: xml.Node): Map[String, Seq[String]] = {
+      val assocs = (elem \ "Association").filter(lrml)
+      val erg = assocs.flatMap { e =>
+        val appliesSources0 = (e \ "appliesSource").filter(lrml)
+        val appliesSources = appliesSources0.flatMap { as =>
+          as.attribute("keyref") match {
+            case Some(v) => if (v.startsWith("#")) Some(v.head.text.tail) else Some(v.head.text)
+            case None => None
+          }
+        }
+        val toTargets0 = (e \ "toTarget").filter(lrml)
+        val resMap = toTargets0.flatMap { as =>
+          as.attribute("keyref") match {
+            case Some(v) =>
+              val n = v.head.text
+              val n0: String = if (n.startsWith("#")) n.tail else n
+              Some((n0, appliesSources))
+            case None => None
+          }
+        }
+        resMap
+      }
+      erg.toMap
+    }
+
+    private[this] def lrmlStatements(elem: xml.Node, associations: Map[String, Seq[String]]): Seq[TPTP.AnnotatedFormula] = {
       val statements = elem \ "_"
-      statements.map(lrmlStatement)
+      statements.map(lrmlStatement(_, associations))
     }
     private[this] def tptpProhibition(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
@@ -69,7 +115,20 @@ object Import {
     private[this] def tptpConstitutive(left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula =
       TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$constitutive", Seq.empty), Seq(left,right))
 
-    private[this] def lrmlStatement(elem: xml.Node): TPTP.AnnotatedFormula = {
+    private[this] def lrmlStatement(elem: xml.Node, associations: Map[String, Seq[String]]): TPTP.AnnotatedFormula = {
+      val formulaName = elem.attribute("key")
+      val (name, annotations): (String, TPTP.Annotations) = formulaName match {
+        case None => (generateName(), None)
+        case Some(v) =>
+          associations.get(v.head.text) match {
+            case None => (v.head.text, None)
+            case Some(y) =>
+              val z = TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData("sources", y.map(arg => TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData(arg, Seq.empty)), None)))), None)
+              (v.head.text, Some(z, None))
+          }
+
+      }
+
       elem.label match {
         case "ConstitutiveStatement" | "PrescriptiveStatement" =>
           val rule = elem \ "Rule"
@@ -94,13 +153,13 @@ object Import {
               }
             } else throw new IllegalArgumentException("if/then != 1")
           }
-          TPTP.TFFAnnotated(name = "name", role = "axiom", formula = TPTP.TFF.Logical(convertedRule), annotations = None)
+          TPTP.TFFAnnotated(name, role = "axiom", formula = TPTP.TFF.Logical(convertedRule), annotations)
 
         case "FactualStatement" =>
-          val body = elem \ "_"
+          val body = (elem \ "_") diff (elem \ "Paraphrase")
           val convertedFormula = if (body.size != 1) throw  new IllegalArgumentException("body != 1")
           else lrmlFormula(body.head)
-          TPTP.TFFAnnotated(name = "name", role = "axiom", formula = TPTP.TFF.Logical(convertedFormula), annotations = None)
+          TPTP.TFFAnnotated(name, role = "axiom", formula = TPTP.TFF.Logical(convertedFormula), annotations)
 
         case _ => throw new IllegalArgumentException(s"Unsupported Statement type '${elem.label}' in input '${elem.toString()}'.")
       }
@@ -130,6 +189,27 @@ object Import {
 
     private def fromRuleMLFormula(formula: xml.Node): TPTP.TFF.Formula = {
       formula.label match {
+        case "Data" if formula.attribute("http://www.w3.org/2001/XMLSchema-instance", "type").isDefined && formula.text.nonEmpty =>
+          val ty0 = formula.attribute("http://www.w3.org/2001/XMLSchema-instance", "type").get
+          if (ty0.nonEmpty && ty0.head.text.nonEmpty) {
+            val ty = ty0.head.text
+            ty.split(':').toSeq match {
+              case Seq(left, right) =>
+                val ns = formula.getNamespace(left)
+                if (ns == "http://www.w3.org/2001/XMLSchema" && right == "boolean") {
+                  formula.text.toLowerCase match {
+                    case "true" | "1" => TPTP.TFF.AtomicFormula("$true", Seq.empty)
+                    case "false" | "0" => TPTP.TFF.AtomicFormula("$false", Seq.empty)
+                    case _ => throw new IllegalArgumentException(s"Unrecognized boolean data '${formula.text}'.")
+                  }
+                } else {
+                  throw new IllegalArgumentException("Unsupported data type")
+                }
+              case _ => throw new IllegalArgumentException("Unsupported data type")
+            }
+          } else throw new IllegalArgumentException("Unsupported data type")
+
+
         case "Exists" | "Forall" =>
           val children = formula \ "_"
           val varElems = children.filter(_.label == "Var") // TODO: Add optional declare tag
@@ -186,6 +266,8 @@ object Import {
           val predName = fromTextOrFromAttr(predNode, "iri")
           val transformedArgs = argElems.map(fromRuleMLAtom)
           TPTP.TFF.AtomicFormula(predName, transformedArgs)
+
+        case _ => throw new IllegalArgumentException(s"Unexpected formula input: ${formula.toString()}")
       }
     }
 
