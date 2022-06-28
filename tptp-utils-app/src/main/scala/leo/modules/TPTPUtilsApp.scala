@@ -189,12 +189,6 @@ object TPTPUtilsApp {
         |               The source language is specified as a mandatory command parameter:
         |               --LRML   (for import from LegalRuleML)
         |
-        |  export       Translate, if possible, the TPTP file into an adequate representation
-        |               in the goal language.
-        |
-        |               The goal language is specified as a mandatory command parameter:
-        |               --LRML   (for export to LegalRuleML)
-        |
         | Options:
         |  --tstp       Enable TSTP-compatible output: The output in <output file>
         |               (or stdout) will start with a SZS status value and the output

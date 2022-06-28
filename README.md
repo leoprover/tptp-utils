@@ -17,6 +17,7 @@ Current features include:
  - Reparsing *(Read the input file and print an abstract syntax tree in JSON format)*
  - Dialect transformation *(Translate problem from TPTP dialect A to TPTP dialect B)*
  - Linting *(Read and check the problem file for suspicious content, malformed logic specification, etc.)* **Work in progress!**
+ - Importing (fragments of) LegalRuleML files to [normative TPTP](https://github.com/leoprover/logic-embedding) **Work in progress!**
  
 ## Usage
 
@@ -46,6 +47,11 @@ usage: tptputils [--tstp] <command> [command parameters] <problem file> [<output
                --CNF, --TCF, --FOF, --TFF, --THF
   lint         Inspect the input problem for suspicious constructs, unused symbols,
                malformed logic specifications, etc.
+  import       Translate, if possible, the input file into an adequate TPTP
+               representation.
+
+               The source language is specified as a mandatory command parameter:
+               --LRML   (for import from LegalRuleML)
 
  Options:
   --tstp       Enable TSTP-compatible output: The output in <output file>
