@@ -27,6 +27,7 @@ lazy val tptpUtilsRuntime = (project in file("tptp-utils-runtime"))
     test in assembly := {},
     assemblyJarName in assembly := s"${name.value}-${version.value}.jar",
     libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.2",
+    libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.1.0",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test"
 	)
 
