@@ -96,19 +96,19 @@ object Import {
     }
     private[this] def tptpProhibition(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
-        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$prohibition", Seq(Right((TPTP.TFF.AtomicTerm("$$bearer", Seq.empty), value)))), Seq(left,right))
+        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$prohibition", Seq(Right((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value)))), Seq(left,right))
         case None => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$prohibition", Seq.empty), Seq(left,right))
       }
     }
     private[this] def tptpObligation(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
-        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$obligation", Seq(Right((TPTP.TFF.AtomicTerm("$$bearer", Seq.empty), value)))), Seq(left,right))
+        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$obligation", Seq(Right((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value)))), Seq(left,right))
         case None => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$obligation", Seq.empty), Seq(left,right))
       }
     }
     private[this] def tptpPermission(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
-        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$permission", Seq(Right((TPTP.TFF.AtomicTerm("$$bearer", Seq.empty), value)))), Seq(left,right))
+        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$permission", Seq(Right((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value)))), Seq(left,right))
         case None => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$permission", Seq.empty), Seq(left,right))
       }
     }
