@@ -10,7 +10,7 @@ import java.io.{File, FileNotFoundException, PrintWriter}
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: Double = 1.2
+  final val version: String = "1.2.1"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
