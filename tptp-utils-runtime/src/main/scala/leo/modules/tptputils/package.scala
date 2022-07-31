@@ -137,7 +137,7 @@ package object tptputils {
       }
     }
 
-    private def resizeBuffer(len: Int) {
+    private def resizeBuffer(len: Int): Unit = {
       val newBuffer = Array.ofDim[Byte](len * 2)
       buffer.copyToArray(newBuffer)
       buffer = newBuffer
@@ -145,7 +145,7 @@ package object tptputils {
 
     private def availableBytes: Int = bufferEnd - bufferPos
 
-    private def readNextChunk() {
+    private def readNextChunk(): Unit = {
       if (source.hasNext) {
         val chars = source.take(buffer.length / 2).toArray
         if (chars.length < 1) bufferEnd = bufferPos - 1
