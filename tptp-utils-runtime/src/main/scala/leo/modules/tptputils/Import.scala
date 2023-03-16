@@ -96,24 +96,36 @@ object Import {
     }
     private[this] def tptpProhibition(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
-        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$prohibition", Seq(Right((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value)))), Seq(left,right))
-        case None => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$prohibition", Seq.empty), Seq(left,right))
+        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(
+          TPTP.TFF.NonclassicalLongOperator("$$prohibition", None, Seq((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value))),
+          Seq(left,right))
+        case None => TPTP.TFF.NonclassicalPolyaryFormula(
+          TPTP.TFF.NonclassicalLongOperator("$$prohibition", None, Seq.empty),
+          Seq(left,right))
       }
     }
     private[this] def tptpObligation(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
-        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$obligation", Seq(Right((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value)))), Seq(left,right))
-        case None => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$obligation", Seq.empty), Seq(left,right))
+        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(
+            TPTP.TFF.NonclassicalLongOperator("$$obligation", None, Seq((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value))),
+            Seq(left, right))
+        case None => TPTP.TFF.NonclassicalPolyaryFormula(
+          TPTP.TFF.NonclassicalLongOperator("$$obligation", None, Seq.empty),
+          Seq(left, right))
       }
     }
     private[this] def tptpPermission(bearer: Option[TPTP.TFF.Term], left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula = {
       bearer match {
-        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$permission", Seq(Right((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value)))), Seq(left,right))
-        case None => TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$permission", Seq.empty), Seq(left,right))
+        case Some(value) => TPTP.TFF.NonclassicalPolyaryFormula(
+          TPTP.TFF.NonclassicalLongOperator("$$permission", None, Seq((TPTP.TFF.AtomicTerm("bearer", Seq.empty), value))),
+          Seq(left, right))
+        case None => TPTP.TFF.NonclassicalPolyaryFormula(
+          TPTP.TFF.NonclassicalLongOperator("$$permission", None, Seq.empty),
+          Seq(left, right))
       }
     }
     private[this] def tptpConstitutive(left: TPTP.TFF.Formula, right: TPTP.TFF.Formula): TPTP.TFF.Formula =
-      TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$constitutive", Seq.empty), Seq(left,right))
+      TPTP.TFF.NonclassicalPolyaryFormula(TPTP.TFF.NonclassicalLongOperator("$$constitutive", None, Seq.empty), Seq(left,right))
 
     private[this] def lrmlStatement(elem: xml.Node, associations: Map[String, Seq[String]]): TPTP.AnnotatedFormula = {
       val formulaName = elem.attribute("key")

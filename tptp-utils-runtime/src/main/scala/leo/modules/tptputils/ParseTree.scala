@@ -52,6 +52,7 @@ object ParseTree {
     case THF.ConnectiveTerm(conn) => s"{ type : 'connectiveTerm' , connective : '${conn.pretty}' }"
     case THF.DistinctObject(name) => s"{ type : 'distinct' , name : '$name' }"
     case THF.NumberTerm(value) => s"{ type : 'number' , value : '${value.pretty}' }"
+    case THF.NonclassicalPolyaryFormula(connective, args) => s"{ type: 'connective', connective : '${connective.pretty}', body : [${args.map(thfFormula).mkString(",")}] }"
   }
 
   private[this] final def tffStatement(tffStatement: TPTP.TFF.Statement): String = tffStatement match {

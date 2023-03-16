@@ -147,13 +147,15 @@ object Linter {
           case _ if arg.startsWith("$modal_axiom_") => ()
           case _ => buffer.append(error(s"Unknown argument $arg to parameter $name."))
         }
-        case THF.BinaryFormula(THF.==, op@THF.ConnectiveTerm(conn), rhs) =>
+        case THF.BinaryFormula(THF.==, op@THF.NonclassicalPolyaryFormula(conn, _), rhs) =>
           conn match {
-            case THF.NonclassicalLongOperator(connName, params) if Seq("$box", "$diamond").contains(connName) =>
+            case THF.NonclassicalLongOperator(connName, idx, params) if Seq("$box", "$diamond").contains(connName) =>
+              idx match {
+                case Some(_) => ()
+                case None => buffer.append(error("Assigning properties to non-indexed modal operator, use parameter default value for this."))
+              }
               params match {
-                case Seq(Left(_)) => ()
-                case Seq() => buffer.append(error("Assigning properties to non-indexed modal operator, use parameter default value for this."))
-                case _ => buffer.append(error(s"Malformed arguments to modal operator ${op.pretty}, use parameter default value for this."))
+                case _ => buffer.append(error(s"Malformed arguments to modal operator ${op.pretty}."))
               }
             case THF.NonclassicalBox(idx) => idx match {
               case Some(_) => ()

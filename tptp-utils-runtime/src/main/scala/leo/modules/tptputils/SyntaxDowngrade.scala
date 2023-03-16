@@ -101,20 +101,6 @@ object SyntaxDowngrade {
 
         function match {
           case THF.FunctionTerm(f, Seq()) => TFF.AtomicFormula(f, arguments.map(thfLogicFormulaToTFFTerm))
-          case THF.ConnectiveTerm(conn) =>
-            val convertedConnective = conn match {
-              case THF.NonclassicalLongOperator(name, params) =>
-                val convertedParams = params.map {
-                  case Left(value) => Left(thfLogicFormulaToTFFTerm(value))
-                  case Right((l,r)) => Right((thfLogicFormulaToTFFTerm(l), thfLogicFormulaToTFFTerm(r)))
-                }
-                TFF.NonclassicalLongOperator(name,  convertedParams)
-              case THF.NonclassicalBox(idx) => TFF.NonclassicalBox(idx.map(thfLogicFormulaToTFFTerm))
-              case THF.NonclassicalDiamond(idx) => TFF.NonclassicalDiamond(idx.map(thfLogicFormulaToTFFTerm))
-              case THF.NonclassicalCone(idx) => TFF.NonclassicalCone(idx.map(thfLogicFormulaToTFFTerm))
-              case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
-            }
-            TFF.NonclassicalPolyaryFormula(convertedConnective, arguments.map(thfLogicFormulaToTFFFormula))
           case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
         }
       case THF.BinaryFormula(connective, left, right) =>
@@ -159,6 +145,20 @@ object SyntaxDowngrade {
         val convertedTyping = typing.map { case (name, typ) => (name, thfTypeToTFF(typ))}
         val convertedBinding = binding.map { case (lhs, rhs) => (thfLogicFormulaToTFFTerm(lhs), thfLogicFormulaToTFFTerm(rhs)) }
         TFF.LetFormula(convertedTyping, convertedBinding, thfLogicFormulaToTFFTerm(body))
+      case THF.NonclassicalPolyaryFormula(connective, args) =>
+        val convertedConnective = connective match {
+          case THF.NonclassicalLongOperator(name, idx, params) =>
+            val convertedIdx = idx.map(thfLogicFormulaToTFFTerm)
+            val convertedParams = params.map {
+              case (l, r) => (thfLogicFormulaToTFFTerm(l), thfLogicFormulaToTFFTerm(r))
+            }
+            TFF.NonclassicalLongOperator(name, convertedIdx, convertedParams)
+          case THF.NonclassicalBox(idx) => TFF.NonclassicalBox(idx.map(thfLogicFormulaToTFFTerm))
+          case THF.NonclassicalDiamond(idx) => TFF.NonclassicalDiamond(idx.map(thfLogicFormulaToTFFTerm))
+          case THF.NonclassicalCone(idx) => TFF.NonclassicalCone(idx.map(thfLogicFormulaToTFFTerm))
+          case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
+        }
+        TFF.NonclassicalPolyaryFormula(convertedConnective, args.map(thfLogicFormulaToTFFFormula))
       case _ => throw new IllegalArgumentException(s"Unsupported formula in downgrade: ${formula.pretty}")
     }
   }
