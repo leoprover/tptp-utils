@@ -39,8 +39,8 @@ object TPTPUtilsApp {
         // Parse input
         val result = command.get match {
           case Parse =>
-            TPTPParser.problem(infile.get)
-            generateResult("", "Success", "")
+            val result = TPTPParser.problem(infile.get)
+            generateResult(result.pretty, "Success", "")
           case Reparse =>
             val parsedInput = TPTPParser.problem(infile.get)
             val json: String = ParseTree(parsedInput)

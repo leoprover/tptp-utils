@@ -1,14 +1,14 @@
 lazy val commonSettings = Seq(
   organization := "org.leo",
-  scalaVersion := "2.13.8",
+  scalaVersion := "2.13.10",
   scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
     ),
-  version := "1.2.1",
+  version := "1.2.3",
   licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
-  libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.6.4",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.12" % "test"
+  libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.0",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
 )
 
 
