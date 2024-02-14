@@ -1,6 +1,6 @@
 lazy val commonSettings = Seq(
   organization := "org.leo",
-  scalaVersion := "2.13.10",
+  scalaVersion := "2.13.12",
   scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
@@ -8,7 +8,7 @@ lazy val commonSettings = Seq(
   version := "1.2.4",
   licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
   libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.1",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.15" % "test"
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % "test"
 )
 
 
