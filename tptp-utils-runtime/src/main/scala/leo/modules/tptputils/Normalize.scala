@@ -1,10 +1,13 @@
 package leo.modules.tptputils
 
 import leo.datastructures.TPTP
+import leo.datastructures.TPTP.THF.Type
 
 object Normalize {
 
-  final def prenexNormalize(problem: TPTP.Problem): TPTP.Problem = PrenexNormalform(problem)
+  @inline final def prenexNormalize(problem: TPTP.Problem): TPTP.Problem = PrenexNormalform(problem)
+  @inline final def prenexNormalize(formulas: Seq[TPTP.AnnotatedFormula]): Seq[TPTP.AnnotatedFormula] = PrenexNormalform(formulas)
+  @inline final def prenexNormalize(annotatedFormula: TPTP.AnnotatedFormula): TPTP.AnnotatedFormula = PrenexNormalform.normalizeAnnotatedFormula(annotatedFormula)
 
   private final object PrenexNormalform {
     def apply(problem: TPTP.Problem): TPTP.Problem = {
@@ -34,7 +37,7 @@ object Normalize {
         case f@TPTP.TPIAnnotated(_, _, _, _) => f
       }
     }
-    def normalizedTHFAnnotatedFormula(thfAnnotated: TPTP.THFAnnotated): TPTP.THFAnnotated = {
+    private def normalizedTHFAnnotatedFormula(thfAnnotated: TPTP.THFAnnotated): TPTP.THFAnnotated = {
       import TPTP.THF
       thfAnnotated.formula match {
         case THF.Typing(_, _) => thfAnnotated
@@ -43,60 +46,7 @@ object Normalize {
       }
     }
 
-//    def normalizeFOFFormula(formula: TPTP.FOF.Formula): TPTP.FOF.Formula = formula match {
-//      case FOF.AtomicFormula(_, _) => formula
-//      case FOF.QuantifiedFormula(quantifier, variableList, body) => FOF.QuantifiedFormula(quantifier, variableList, normalizeFOFFormula(body))
-//      case FOF.UnaryFormula(_, body) =>
-//        val normalizedBody = normalizeFOFFormula(body)
-//        normalizedBody match {
-//          case FOF.QuantifiedFormula(quantifier, variableList, body) => quantifier match {
-//            case FOF.! => FOF.QuantifiedFormula(FOF.?, variableList, normalizeFOFFormula(FOF.UnaryFormula(FOF.~, body)))
-//            case FOF.? => FOF.QuantifiedFormula(FOF.!, variableList, normalizeFOFFormula(FOF.UnaryFormula(FOF.~, body)))
-//          }
-//          case _ => normalizedBody
-//        }
-//      case FOF.BinaryFormula(connective, left, right) =>
-//        val normalizedLeft = normalizeFOFFormula(left)
-//        val normalizedRight = normalizeFOFFormula(right)
-//        connective match {
-//        case FOF.<=> => ???
-//        case FOF.Impl => ???
-//        case FOF.<= => ???
-//        case FOF.<~> => ???
-//        case FOF.~| => ???
-//        case FOF.~& => ???
-//        case FOF.| => ???
-//        case FOF.& => (normalizedLeft, normalizedRight) match {
-//          case (FOF.QuantifiedFormula(quantifierLeft, variableListLeft, bodyLeft), r@FOF.QuantifiedFormula(quantifierRight, variableListRight, bodyRight)) =>
-//            // if variable name clashes are presend, we rename in the right formula
-//            val overlappingVariableNames = variableListLeft intersect variableListRight
-//            if (overlappingVariableNames.isEmpty) {
-//              FOF.QuantifiedFormula(quantifierLeft, variableListLeft,
-//                FOF.QuantifiedFormula(quantifierRight, variableListRight,
-//                  normalizeFOFFormula(FOF.BinaryFormula(connective, bodyLeft, bodyRight))))
-//            } else {
-//              val substitutionForConflictingVariableNames: Map[String, String] = generateFreshVariableNamesSubstitution(overlappingVariableNames, forbiddenVariableNames = variableListLeft concat variableListRight)
-//              val substitutedBodyRight = substituteFOF(bodyRight, substitutionForConflictingVariableNames)
-//              val substitutedVariableListRight = variableListRight.map(substitutionForConflictingVariableNames.withDefault(identity))
-//              FOF.QuantifiedFormula(quantifierLeft, variableListLeft,
-//                FOF.QuantifiedFormula(quantifierRight, substitutedVariableListRight,
-//                  normalizeFOFFormula(FOF.BinaryFormula(connective, bodyLeft, substitutedBodyRight))))
-//            }
-//
-//          case (FOF.QuantifiedFormula(quantifierLeft, variableListLeft, bodyLeft), _) =>
-//            FOF.QuantifiedFormula(quantifierLeft, variableListLeft, normalizeFOFFormula(FOF.BinaryFormula(FOF.&, bodyLeft, normalizedRight)))
-//          case (_, FOF.QuantifiedFormula(quantifierRight, variableListRight, bodyRight)) =>
-//            FOF.QuantifiedFormula(quantifierRight, variableListRight, normalizeFOFFormula(FOF.BinaryFormula(FOF.&, normalizedLeft, bodyRight)))
-//          case _ => FOF.BinaryFormula(FOF.&, normalizedLeft, normalizedRight)
-//        }
-//      }
-//      case FOF.Equality(_, _) => formula
-//      case FOF.Inequality(_, _) => formula
-//    }
-//
-//    def normalizeTFFFormula(formula: TPTP.TFF.Formula): TPTP.TFF.Formula = ???
-
-    def invertTHFQuantifier(quantifier: TPTP.THF.Quantifier): TPTP.THF.Quantifier = {
+    private def invertTHFQuantifier(quantifier: TPTP.THF.Quantifier): TPTP.THF.Quantifier = {
       import TPTP.THF
       quantifier match {
         case THF.! => THF.?
@@ -106,6 +56,41 @@ object Normalize {
     }
     def normalizeTHFFormula(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
       import TPTP.THF
+      def shiftQuantifierOverBinaryConnective(formula: THF.Formula, connective: THF.BinaryConnective, quantifier: THF.Quantifier, variableList: Seq[(String, Type)], matrix: THF.Formula, invertQuantifiersOn: Seq[THF.BinaryConnective], placementOfQuantificationIsLeft: Boolean): THF.Formula = {
+        val maybeSwitchedQuantifier = if (invertQuantifiersOn.contains(connective)) invertTHFQuantifier(quantifier) else quantifier
+        val freeVarsFormula = freeVariablesTHF(formula)
+        val vars = variableList.map(_._1)
+        val conflictingVariables = vars.toSet intersect freeVarsFormula
+        if (conflictingVariables.isEmpty) {
+          THF.QuantifiedFormula(maybeSwitchedQuantifier, variableList,
+            normalizeTHFFormula(
+              if (placementOfQuantificationIsLeft)
+                THF.BinaryFormula(connective,
+                  matrix,
+                  formula
+                )
+              else
+                THF.BinaryFormula(connective,
+                  formula,
+                  matrix
+                )
+            )
+          )
+        } else {
+          // substitute in the leftBody and rename bindings accordingly
+          val substitutionForConflictingVariableNames: Map[String, String] = generateFreshVariableNamesSubstitution(conflictingVariables.toSeq, forbiddenVariableNames = vars ++ freeVarsFormula.toSeq)
+          val substitutedMatrix = substituteTHF(matrix, substitutionForConflictingVariableNames)
+          val substitutedVariableList = variableList.map { case (vari, ty) => (substitutionForConflictingVariableNames.withDefaultValue(vari)(vari), ty) }
+          THF.QuantifiedFormula(maybeSwitchedQuantifier, substitutedVariableList,
+            normalizeTHFFormula(
+              THF.BinaryFormula(connective,
+                substitutedMatrix,
+                formula)
+            )
+          )
+        }
+      }
+
       formula match {
         case THF.QuantifiedFormula(quantifier, variableList, body) =>
           THF.QuantifiedFormula(quantifier, variableList, normalizeTHFFormula(body))
@@ -126,38 +111,21 @@ object Normalize {
           val normalizedLeft = normalizeTHFFormula(left)
           val normalizedRight = normalizeTHFFormula(right)
           connective match {
-            case THF.<=> => ???
-            case THF.<~> => ???
+            case THF.<=> | THF.<~> =>
+              //rewrite as two implications and then run method on that
+              val rewritten0 = THF.BinaryFormula(THF.&,
+                THF.BinaryFormula(THF.Impl, normalizedLeft, normalizedRight),
+                THF.BinaryFormula(THF.<=, normalizedLeft, normalizedRight)
+              )
+              val rewritten = if (connective == THF.<~>) THF.UnaryFormula(THF.~, rewritten0) else rewritten0
+              normalizeTHFFormula(rewritten)
 
             case THF.| | THF.& | THF.~| | THF.~& | THF.Impl | THF.<= => (normalizedLeft, normalizedRight) match {
               case (THF.QuantifiedFormula(leftQuantifier, leftVariableList, leftBody), _) =>
                 /// invert on nots and left-implication (and right implication if right side is quantification)
-                val maybeSwitchedLeftQuantifier = if (connective == THF.~| || connective == THF.~& | connective == THF.Impl) invertTHFQuantifier(leftQuantifier) else leftQuantifier
-                val freeVarsRight = freeVariablesTHF(normalizedRight)
-                val leftVars = leftVariableList.map(_._1)
-                val conflictingVariables = leftVars.toSet intersect freeVarsRight
-                if (conflictingVariables.isEmpty) {
-                  THF.QuantifiedFormula(maybeSwitchedLeftQuantifier, leftVariableList,
-                    normalizeTHFFormula(
-                      THF.BinaryFormula(connective,
-                        leftBody,
-                        normalizedRight)
-                    )
-                  )
-                } else {
-                  // substitute in the leftBody and rename bindings accordingly
-                  val substitutionForConflictingVariableNames: Map[String, String] = generateFreshVariableNamesSubstitution(conflictingVariables.toSeq, forbiddenVariableNames = leftVars ++ freeVarsRight.toSeq)
-                  val substitutedLeftBody = substituteTHF(leftBody, substitutionForConflictingVariableNames)
-                  val substitutedLeftVariableList = leftVariableList.map { case (vari,ty) =>  (substitutionForConflictingVariableNames.withDefaultValue(vari)(vari), ty) }
-                  THF.QuantifiedFormula(maybeSwitchedLeftQuantifier, substitutedLeftVariableList,
-                    normalizeTHFFormula(
-                      THF.BinaryFormula(connective,
-                        substitutedLeftBody,
-                        normalizedRight)
-                    )
-                  )
-                }
-              case (_, THF.QuantifiedFormula(rightQuantifier, rightVariableList, rightBody)) => ???
+                shiftQuantifierOverBinaryConnective(normalizedRight, connective, leftQuantifier, leftVariableList, leftBody, invertQuantifiersOn = Seq(THF.~|, THF.~&, THF.Impl))
+              case (_, THF.QuantifiedFormula(rightQuantifier, rightVariableList, rightBody)) =>
+                shiftQuantifierOverBinaryConnective(normalizedLeft, connective, rightQuantifier, rightVariableList, rightBody, invertQuantifiersOn = Seq(THF.~|, THF.~&, THF.<=))
               case _ => THF.BinaryFormula(connective, normalizedLeft, normalizedRight)
             }
 
