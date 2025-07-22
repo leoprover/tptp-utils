@@ -270,6 +270,8 @@ object SyntaxDowngrade {
           quantifier match {
             case TFF.! => FOF.QuantifiedFormula(FOF.!, variableList.map(_._1), tffLogicFormulaToFOF(body))
             case TFF.? => FOF.QuantifiedFormula(FOF.?, variableList.map(_._1), tffLogicFormulaToFOF(body))
+            case TFF.Epsilon => FOF.QuantifiedFormula(FOF.Epsilon, variableList.map(_._1), tffLogicFormulaToFOF(body))
+            case _ => throw new IllegalArgumentException(s"Cannot downgrade TFF quantification to FOF, unsupported quantifier: ${quantifier.pretty}")
           }
         } else {
           throw new IllegalArgumentException(s"Cannot downgrade TFF quantification to FOF with other types than $$i: ${formula.pretty}")

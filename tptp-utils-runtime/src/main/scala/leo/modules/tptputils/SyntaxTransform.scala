@@ -113,6 +113,7 @@ object SyntaxTransform {
         val quantifier0 = quantifier match {
           case TFF.! => THF.!
           case TFF.? => THF.?
+          case TFF.Epsilon => THF.Epsilon
         }
         val varList0: Seq[THF.TypedVariable] = variableList.map {
           case (name, None) => (name, THF.FunctionTerm("$i", Seq.empty))
@@ -226,6 +227,7 @@ object SyntaxTransform {
         val quantifier0 = quantifier match {
           case FOF.! => TFF.!
           case FOF.? => TFF.?
+          case FOF.Epsilon => TFF.Epsilon
         }
         TFF.QuantifiedFormula(quantifier0, variableList.map(x => (x, None)), fofLogicFormulaToTFF(body))
       case FOF.UnaryFormula(connective, body) =>
