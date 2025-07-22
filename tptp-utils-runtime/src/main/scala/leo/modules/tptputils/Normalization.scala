@@ -26,7 +26,7 @@ object Normalization {
       annotatedFormula match {
         case f@TPTP.THFAnnotated(name, role, formula, annotations) => formula match {
           case THF.Typing(_, _) => f
-          case THF.Logical(f0) => TPTP.THFAnnotated(name, role, THF.Logical(normalizeTHFFormula(f0)), annotations)
+          case THF.Logical(f0) => TPTP.THFAnnotated(name, role, THF.Logical(normalizeTHFFormula0(f0)), annotations)
           case THF.Sequent(_, _) => f
         }
         case f@TPTP.TFFAnnotated(_, _, _, _) =>
@@ -61,6 +61,10 @@ object Normalization {
       }
     }
     def normalizeTHFFormula(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
+      val normalized = normalizeTHFFormula0(formula)
+      contractQuantifier(normalized)
+    }
+    def normalizeTHFFormula0(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
       import TPTP.THF
       def shiftQuantifierOverBinaryConnective(formula: THF.Formula, connective: THF.BinaryConnective, quantifier: THF.Quantifier, variableList: Seq[(String, Type)], matrix: THF.Formula, invertQuantifiersOn: Seq[THF.BinaryConnective], placementOfQuantificationIsLeft: Boolean): THF.Formula = {
         val maybeSwitchedQuantifier = if (invertQuantifiersOn.contains(connective)) invertTHFQuantifier(quantifier) else quantifier
@@ -77,7 +81,7 @@ object Normalization {
         THF.QuantifiedFormula(
           maybeSwitchedQuantifier,
           maybeSubstitutedVariableList,
-          normalizeTHFFormula(
+          normalizeTHFFormula0(
             if (placementOfQuantificationIsLeft) THF.BinaryFormula(connective, maybeSubstitutedMatrix, formula)
             else THF.BinaryFormula(connective, formula, maybeSubstitutedMatrix)
           )
@@ -86,23 +90,23 @@ object Normalization {
 
       formula match {
         case THF.QuantifiedFormula(quantifier, variableList, body) =>
-          THF.QuantifiedFormula(quantifier, variableList, normalizeTHFFormula(body))
+          THF.QuantifiedFormula(quantifier, variableList, normalizeTHFFormula0(body))
         case THF.UnaryFormula(connective, body) => connective match {
           case THF.~ =>
-            val normalizedBody = normalizeTHFFormula(body)
+            val normalizedBody = normalizeTHFFormula0(body)
             normalizedBody match {
               case THF.QuantifiedFormula(quantifier, variableList, body) =>
                 quantifier match {
                   case THF.! | THF.? =>
-                    THF.QuantifiedFormula(invertTHFQuantifier(quantifier), variableList, normalizeTHFFormula(THF.UnaryFormula(THF.~, body)))
+                    THF.QuantifiedFormula(invertTHFQuantifier(quantifier), variableList, normalizeTHFFormula0(THF.UnaryFormula(THF.~, body)))
                   case _ => THF.UnaryFormula(connective, normalizedBody)
                 }
               case _ => THF.UnaryFormula(connective, normalizedBody)
             }
         }
         case THF.BinaryFormula(connective, left, right) =>
-          val normalizedLeft = normalizeTHFFormula(left)
-          val normalizedRight = normalizeTHFFormula(right)
+          val normalizedLeft = normalizeTHFFormula0(left)
+          val normalizedRight = normalizeTHFFormula0(right)
           connective match {
             case THF.<=> | THF.<~> =>
               //rewrite as two implications and then run method on that
@@ -111,7 +115,7 @@ object Normalization {
                 THF.BinaryFormula(THF.<=, normalizedLeft, normalizedRight)
               )
               val rewritten = if (connective == THF.<~>) THF.UnaryFormula(THF.~, rewritten0) else rewritten0
-              normalizeTHFFormula(rewritten)
+              normalizeTHFFormula0(rewritten)
 
             case THF.| | THF.& | THF.~| | THF.~& | THF.Impl | THF.<= => (normalizedLeft, normalizedRight) match {
               case (THF.QuantifiedFormula(leftQuantifier, leftVariableList, leftBody), _) =>
@@ -128,5 +132,18 @@ object Normalization {
       }
     }
 
+    private def contractQuantifier(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
+      import TPTP.THF
+      formula match {
+        case THF.QuantifiedFormula(quantifier1, variableList1, body1) => body1 match {
+          case THF.QuantifiedFormula(quantifier2, variableList2, body2) if quantifier1 == quantifier2 =>
+            contractQuantifier(THF.QuantifiedFormula(quantifier1, variableList1 ++ variableList2, body2))
+          case f@THF.QuantifiedFormula(_, _, _) =>
+            THF.QuantifiedFormula(quantifier1, variableList1, contractQuantifier(f))
+          case _ => formula
+        }
+        case _ => formula
+      }
+    }
   }
 }
