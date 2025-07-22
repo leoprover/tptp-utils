@@ -1,5 +1,6 @@
 package leo.modules
 
+import leo.datastructures.TPTP
 import leo.datastructures.TPTP.AnnotatedFormula.FormulaType
 
 package object tptputils {
@@ -49,6 +50,96 @@ package object tptputils {
       }
       case TPI => false
     }
+  }
+
+//  final def freeVariablesFOF(fofFormula: TPTP.FOF.Formula): Set[String] = ???
+//  final def freeVariablesTFF(tffFormula: TPTP.TFF.Formula): Set[String] = ???
+  final def freeVariablesTHF(thfFormula: TPTP.THF.Formula): Set[String] = freeVariablesTHF0(thfFormula, fvs = Set.empty)
+  final private def freeVariablesTHF0(thfFormula: TPTP.THF.Formula, fvs: Set[String]): Set[String] = {
+    import TPTP.THF
+    thfFormula match {
+      case THF.FunctionTerm(f, args) =>
+        args.flatMap(freeVariablesTHF0(_, fvs)).toSet
+      case THF.QuantifiedFormula(_, variableList, body) =>
+        freeVariablesTHF0(body, fvs) -- variableList.map(_._1).toSet
+      case THF.Variable(name) => fvs + name
+      case THF.UnaryFormula(_, body) => freeVariablesTHF0(body, fvs)
+      case THF.BinaryFormula(_, left, right) =>
+        freeVariablesTHF0(left, fvs) ++ freeVariablesTHF0(right, fvs)
+      case THF.Tuple(elements) => elements.flatMap(freeVariablesTHF0(_, fvs)).toSet
+      case THF.ConditionalTerm(condition, thn, els) =>
+        freeVariablesTHF0(condition, fvs) ++ freeVariablesTHF0(thn, fvs) ++ freeVariablesTHF0(els, fvs)
+      case THF.LetTerm(typing, _, body) =>
+        freeVariablesTHF0(body, fvs) -- typing.keySet
+      case THF.NonclassicalPolyaryFormula(_, args) =>
+        args.flatMap(freeVariablesTHF0(_, fvs)).toSet
+      case _ => Set.empty
+    }
+  }
+
+  /** Replace free occurrences of variables by other variables as given by `substitution`. */
+  final def substituteFOF(fofFormula: TPTP.FOF.Formula, substitution: Map[String, String]): TPTP.FOF.Formula = substituteFOF0(fofFormula, substitution, boundVars = Set.empty)
+  final def substituteFOF0(fofFormula: TPTP.FOF.Formula, substitution: Map[String, String], boundVars: Set[String]): TPTP.FOF.Formula = {
+    import TPTP.FOF
+    fofFormula match {
+      case FOF.AtomicFormula(f, args) => FOF.AtomicFormula(f, args.map(substituteFOFTerm0(_, substitution, boundVars)))
+      case FOF.QuantifiedFormula(quantifier, variableList, body) =>
+        FOF.QuantifiedFormula(quantifier, variableList, substituteFOF0(body, substitution, boundVars ++ variableList))
+      case FOF.UnaryFormula(connective, body) => FOF.UnaryFormula(connective, substituteFOF0(body, substitution, boundVars))
+      case FOF.BinaryFormula(connective, left, right) => FOF.BinaryFormula(connective, substituteFOF0(left, substitution, boundVars), substituteFOF0(right, substitution, boundVars))
+      case FOF.Equality(left, right) => FOF.Equality(substituteFOFTerm0(left, substitution, boundVars), substituteFOFTerm0(right, substitution, boundVars))
+      case FOF.Inequality(left, right) => FOF.Inequality(substituteFOFTerm0(left, substitution, boundVars), substituteFOFTerm0(right, substitution, boundVars))
+    }
+  }
+  final def substituteFOFTerm0(fofTerm: TPTP.FOF.Term, substitution: Map[String, String], boundVars: Set[String]): TPTP.FOF.Term = {
+    import TPTP.FOF
+    fofTerm match {
+      case FOF.AtomicTerm(f, args) => FOF.AtomicTerm(f, args.map(substituteFOFTerm0(_, substitution, boundVars)))
+      case FOF.Variable(name) if !boundVars.contains(name) => FOF.Variable(substitution.withDefaultValue(name)(name))
+      case _ => fofTerm
+    }
+  }
+
+  final def substituteTHF(thfFormula: TPTP.THF.Formula, substitution: Map[String, String]): TPTP.THF.Formula = substituteTHF0(thfFormula, substitution, boundVars = Set.empty)
+  final def substituteTHF0(thfFormula: TPTP.THF.Formula, substitution: Map[String, String], boundVars: Set[String]): TPTP.THF.Formula = {
+    import TPTP.THF
+    thfFormula match {
+      case THF.FunctionTerm(f, args) => THF.FunctionTerm(f, args.map(substituteTHF0(_, substitution, boundVars)))
+      case THF.QuantifiedFormula(quantifier, variableList, body) =>
+        THF.QuantifiedFormula(quantifier, variableList, substituteTHF0(body, substitution, boundVars ++ variableList.map(_._1).toSet))
+      case THF.Variable(name) if !boundVars.contains(name) => THF.Variable(substitution.withDefaultValue(name)(name))
+      case THF.UnaryFormula(connective, body) =>
+        THF.UnaryFormula(connective, substituteTHF0(body, substitution, boundVars))
+      case THF.BinaryFormula(connective, left, right) =>
+        THF.BinaryFormula(connective, substituteTHF0(left, substitution, boundVars), substituteTHF0(right, substitution, boundVars))
+      case THF.Tuple(elements) =>
+        THF.Tuple(elements.map(substituteTHF0(_, substitution, boundVars)))
+      case THF.ConditionalTerm(condition, thn, els) =>
+        THF.ConditionalTerm(substituteTHF0(condition, substitution, boundVars), substituteTHF0(thn, substitution, boundVars), substituteTHF0(els, substitution, boundVars))
+      case THF.LetTerm(typing, binding, body) =>
+        THF.LetTerm(typing, binding, substituteTHF0(body, substitution, boundVars ++ typing.keySet))
+      case THF.NonclassicalPolyaryFormula(connective, args) =>
+        THF.NonclassicalPolyaryFormula(connective, args.map(substituteTHF0(_, substitution, boundVars)))
+      case _ => thfFormula
+    }
+  }
+
+  final def generateFreshVariableNamesSubstitution(newNamesFor: Seq[String], forbiddenVariableNames: Seq[String]): Map[String, String] = {
+    var substitution: Map[String, String] = Map.empty
+    var forbiddenVariableNames0 = forbiddenVariableNames
+    newNamesFor foreach { vari =>
+      val newNameForVari = generteFreshVariableName(vari, forbiddenVariableNames0)
+      substitution = substitution + (vari -> newNameForVari)
+      forbiddenVariableNames0 = forbiddenVariableNames0 :+ newNameForVari
+    }
+    substitution
+  }
+
+  final def generteFreshVariableName(newNameFor: String, forbiddenVariableNames: Seq[String]): String = {
+    var counter = 0
+    def varName(): String = s"$newNameFor$counter"
+    while (forbiddenVariableNames contains varName()) { counter = counter + 1 }
+    varName()
   }
 
   import scala.io.Source

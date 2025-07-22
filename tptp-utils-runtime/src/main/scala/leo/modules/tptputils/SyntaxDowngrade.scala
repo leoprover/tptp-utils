@@ -9,6 +9,13 @@ object SyntaxDowngrade {
     TPTP.TFFAnnotated(thf.name, thf.role, thfStatementToTFF(thf.formula), thf.annotations)
   @inline final def thfToTFF(thfs: Seq[TPTP.THFAnnotated]): Seq[TPTP.TFFAnnotated] = thfs.map(thfToTFF)
 
+  @inline final def tffToFOF(tff: TPTP.TFFAnnotated): TPTP.FOFAnnotated =
+    TPTP.FOFAnnotated(tff.name, tff.role, tffStatementToFOF(tff.formula), tff.annotations)
+  @inline final def tffToFOF(tffs: Seq[TPTP.TFFAnnotated]): Seq[TPTP.FOFAnnotated] = tffs.map(tffToFOF)
+
+  @inline final def thfToFOF(thf: TPTP.THFAnnotated): TPTP.FOFAnnotated = tffToFOF(thfToTFF(thf))
+  @inline final def thfToFOF(thfs: Seq[TPTP.THFAnnotated]): Seq[TPTP.FOFAnnotated] = thfs.map(thfToFOF)
+
   @inline final def apply(goalLanguage: TPTP.AnnotatedFormula.FormulaType.FormulaType,
                           problem: TPTP.Problem): TPTP.Problem = downgradeProblem(goalLanguage, problem)
 
@@ -29,18 +36,19 @@ object SyntaxDowngrade {
           (goalLanguage: @unchecked) match {
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.THF => f
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => thfToTFF(f)
+            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => thfToFOF(f)
             case _ => // TODO
-              throw new IllegalArgumentException("Currently only downgrade to TFF supported.")
-//            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => cnfToFOF(f)
-//            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => cnfToTCF(f)
+              throw new IllegalArgumentException("Downgrade from THF currently only to TFF/FOF supported.")
+//            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => thfToFOF(f)
+//            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => thfoTCF(f)
 //            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.CNF => f
           }
         case f@TPTP.TFFAnnotated(_, _, _, _) =>
           (goalLanguage: @unchecked) match {
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => f
             case _ => // TODO
-              throw new IllegalArgumentException("Downgrade from TFF currently not supported.")
-//            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => ???
+              throw new IllegalArgumentException("Downgrade for TFF currently only to FOF supported.")
+            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => tffToFOF(f)
 //            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => ???
 //            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.CNF => ???
           }
@@ -234,6 +242,69 @@ object SyntaxDowngrade {
     ty.right match {
       case f@THF.BinaryFormula(THF.FunTyConstructor, _, _) => collectMappingTypes(f, acc :+ ty.left)
       case _ => (acc :+ ty.left, ty.right)
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // TFF to FOF
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  final def tffStatementToFOF(statement: TPTP.TFF.Statement): TPTP.FOF.Statement = {
+    import TPTP.TFF
+    statement match {
+      case TFF.Typing(_, _) => throw new IllegalArgumentException(s"Unsupported expression in downgrade: ${statement.pretty}")
+      case TFF.Logical(formula) => TPTP.FOF.Logical(tffLogicFormulaToFOF(formula))
+      case TFF.Sequent(_, _) => throw new IllegalArgumentException(s"Unsupported expression in downgrade: ${statement.pretty}")
+    }
+  }
+
+  final def tffLogicFormulaToFOF(formula: TPTP.TFF.Formula): TPTP.FOF.Formula = {
+    import TPTP.FOF
+    import TPTP.TFF
+    formula match {
+      case TFF.AtomicFormula(f, args) => FOF.AtomicFormula(f, args.map(tffTermToFOF))
+      case TFF.QuantifiedFormula(quantifier, variableList, body) =>
+        if (variableList.flatMap(_._2).forall(ty => ty == TPTP.TFF.AtomicType("$i", Seq.empty))) {
+          quantifier match {
+            case TFF.! => FOF.QuantifiedFormula(FOF.!, variableList.map(_._1), tffLogicFormulaToFOF(body))
+            case TFF.? => FOF.QuantifiedFormula(FOF.?, variableList.map(_._1), tffLogicFormulaToFOF(body))
+          }
+        } else {
+          throw new IllegalArgumentException(s"Cannot downgrade TFF quantification to FOF with other types than $$i: ${formula.pretty}")
+        }
+      case TFF.UnaryFormula(connective, body) =>
+        connective match {
+          case TFF.~ => FOF.UnaryFormula(FOF.~, tffLogicFormulaToFOF(body))
+        }
+      case TFF.BinaryFormula(connective, left, right) =>
+        def connectiveAsFOF(connective: TFF.BinaryConnective): FOF.BinaryConnective = connective match {
+          case TFF.<=> => FOF.<=>
+          case TFF.Impl => FOF.Impl
+          case TFF.<= => FOF.<=
+          case TFF.<~> => FOF.<~>
+          case TFF.~| => FOF.~|
+          case TFF.~& => FOF.~&
+          case TFF.| =>  FOF.|
+          case TFF.& => FOF.&
+        }
+        FOF.BinaryFormula(connectiveAsFOF(connective), tffLogicFormulaToFOF(left), tffLogicFormulaToFOF(right))
+      case TFF.Equality(left, right) => FOF.Equality(tffTermToFOF(left), tffTermToFOF(right))
+      case TFF.Inequality(left, right) => FOF.Inequality(tffTermToFOF(left), tffTermToFOF(right))
+
+      case _ => throw new IllegalArgumentException(s"Cannot downgrade TFF expression to FOF, outside of language fragment: ${formula.pretty}")
+    }
+  }
+  final def tffTermToFOF(term: TPTP.TFF.Term): TPTP.FOF.Term = {
+    import TPTP.TFF
+    import TPTP.FOF
+    term match {
+      case TFF.AtomicTerm(f, args) => FOF.AtomicTerm(f, args.map(tffTermToFOF))
+      case TFF.Variable(name) => FOF.Variable(name)
+      case TFF.DistinctObject(name) => FOF.DistinctObject(name)
+      case TFF.NumberTerm(value) => FOF.NumberTerm(value)
+      case _ => throw new IllegalArgumentException(s"Cannot downgrade TFF expression to FOF, outside of language fragment: ${term.pretty}")
     }
   }
 
