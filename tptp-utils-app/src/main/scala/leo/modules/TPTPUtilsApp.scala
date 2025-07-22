@@ -2,7 +2,7 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.Problem
-import leo.modules.tptputils.{Linter, ParseTree, SyntaxDowngrade, SyntaxTransform}
+import leo.modules.tptputils.{Linter, ParseTree, SyntaxDowngrade, SyntaxTransform, Normalization}
 import leo.modules.input.TPTPParser
 
 import scala.io.Source
@@ -66,6 +66,10 @@ object TPTPUtilsApp {
             val result = tptputils.Import(infile.get, from)
             generateResult(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Export(to) => ???
+          case Normalize(normalform) =>
+            val parsedInput = TPTPParser.problem(infile.get)
+            val result = tptputils.Normalization(normalform,parsedInput)
+            generateResult(tptpProblemToString(result), "Success", "ListOfFormulae")
         }
         outfile.get.print(result)
         outfile.get.flush()
@@ -200,13 +204,14 @@ object TPTPUtilsApp {
   }
 
   protected sealed abstract class Command
-  final case object Parse extends Command
-  final case object Reparse extends Command
-  final case class  Transform(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
-  final case class  Downgrade(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
-  final case object Lint extends Command
-  final case class  Import(from: tptputils.ExternalLanguage) extends Command
-  final case class  Export(to: tptputils.ExternalLanguage) extends Command
+  final private case object Parse extends Command
+  final private case object Reparse extends Command
+  final private case class  Transform(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
+  final private case class  Downgrade(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
+  final private case object Lint extends Command
+  final private case class  Import(from: leo.modules.tptputils.Import.ExternalLanguage) extends Command
+  final private case class  Export(to: leo.modules.tptputils.Import.ExternalLanguage) extends Command
+  final private case class Normalize(normalform: Normalization.Normalform) extends Command
 
   private[this] final def parseArgs(args: Seq[String]): Unit = {
     var args0 = args
@@ -244,7 +249,7 @@ object TPTPUtilsApp {
           if (param.startsWith("--")) {
             args0 = args0.tail
             val lang = param.drop(2) match {
-              case "LRML" => tptputils.LegalRuleML
+              case "LRML" => leo.modules.tptputils.Import.LegalRuleML
               case _ => throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
             }
             Import(lang)
@@ -256,12 +261,24 @@ object TPTPUtilsApp {
           if (param.startsWith("--")) {
             args0 = args0.tail
             val lang = param.drop(2) match {
-              case "LRML" => tptputils.LegalRuleML
+              case "LRML" => leo.modules.tptputils.Import.LegalRuleML
               case _ => throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
             }
             Export(lang)
           } else {
             throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
+          }
+        case "normalize" =>
+          val param = args0.tail.head
+          if (param.startsWith("--")) {
+            args0 = args0.tail
+            val normalform = param.drop(2) match {
+              case "prenex" => Normalization.PrenexNF
+              case _ => throw new IllegalArgumentException(s"Unknown goal normal form parameter: ${param.drop(2)}.")
+            }
+            Normalize(normalform)
+          } else {
+            throw new IllegalArgumentException("Command normalize expects a goal normal form, e.g., --prenex.")
           }
         case _ => throw new IllegalArgumentException(s"Unknown command '$hd'.")
       }
