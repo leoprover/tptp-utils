@@ -7,8 +7,8 @@ lazy val commonSettings = Seq(
     ),
   version := "1.3.0",
   licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
-  libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.1",
-  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % "test"
+  libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.3",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % "test"
 )
 
 
@@ -29,7 +29,7 @@ lazy val tptpUtilsRuntime = (project in file("tptp-utils-runtime"))
     },
     assembly / test := {},
     assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
-    libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.1.0",
+    libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "2.4.0",
 	)
 
 lazy val tptpUtilsApp = (project in file("tptp-utils-app"))
