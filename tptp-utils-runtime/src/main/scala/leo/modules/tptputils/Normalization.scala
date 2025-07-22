@@ -3,7 +3,13 @@ package leo.modules.tptputils
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.THF.Type
 
-object Normalize {
+object Normalization {
+  sealed abstract class Normalform
+  case object PrenexNF extends Normalform
+
+  final def apply(normalform: Normalform, input: TPTP.Problem): TPTP.Problem = normalform match {
+    case PrenexNF => prenexNormalize(input)
+  }
 
   @inline final def prenexNormalize(problem: TPTP.Problem): TPTP.Problem = PrenexNormalform(problem)
   @inline final def prenexNormalize(formulas: Seq[TPTP.AnnotatedFormula]): Seq[TPTP.AnnotatedFormula] = PrenexNormalform(formulas)

@@ -4,9 +4,12 @@ import leo.datastructures.TPTP
 import leo.modules.tptputils
 
 object Import {
+  sealed abstract class ExternalLanguage
+  case object LegalRuleML extends ExternalLanguage
+
   final def apply(file: io.Source, from: ExternalLanguage): TPTP.Problem = {
     from match {
-      case tptputils.LegalRuleML => new LegalRuleMLImport().apply(file)
+      case LegalRuleML => new LegalRuleMLImport().apply(file)
     }
   }
 

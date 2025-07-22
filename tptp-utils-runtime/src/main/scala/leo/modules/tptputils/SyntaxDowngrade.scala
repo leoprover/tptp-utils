@@ -46,9 +46,9 @@ object SyntaxDowngrade {
         case f@TPTP.TFFAnnotated(_, _, _, _) =>
           (goalLanguage: @unchecked) match {
             case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TFF => f
+            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => tffToFOF(f)
             case _ => // TODO
               throw new IllegalArgumentException("Downgrade for TFF currently only to FOF supported.")
-            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.FOF => tffToFOF(f)
 //            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.TCF => ???
 //            case leo.datastructures.TPTP.AnnotatedFormula.FormulaType.CNF => ???
           }
