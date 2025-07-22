@@ -68,18 +68,12 @@ object Normalize {
           val substitutedVariableList = variableList.map { case (vari, ty) => (substitutionForConflictingVariableNames.withDefaultValue(vari)(vari), ty) }
           (substitutedMatrix, substitutedVariableList)
         }
-        THF.QuantifiedFormula(maybeSwitchedQuantifier, maybeSubstitutedVariableList,
+        THF.QuantifiedFormula(
+          maybeSwitchedQuantifier,
+          maybeSubstitutedVariableList,
           normalizeTHFFormula(
-            if (placementOfQuantificationIsLeft)
-              THF.BinaryFormula(connective,
-                maybeSubstitutedMatrix,
-                formula
-              )
-            else
-              THF.BinaryFormula(connective,
-                formula,
-                maybeSubstitutedMatrix
-              )
+            if (placementOfQuantificationIsLeft) THF.BinaryFormula(connective, maybeSubstitutedMatrix, formula)
+            else THF.BinaryFormula(connective, formula, maybeSubstitutedMatrix)
           )
         )
       }
