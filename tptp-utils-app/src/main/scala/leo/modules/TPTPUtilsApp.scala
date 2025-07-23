@@ -70,6 +70,12 @@ object TPTPUtilsApp {
             val parsedInput = TPTPParser.problem(infile.get)
             val result = tptputils.Normalization(normalform,parsedInput)
             generateResult(tptpProblemToString(result), "Success", "ListOfFormulae")
+          case Fragment =>
+            val parsedInput = TPTPParser.problem(infile.get)
+            val fragment = tptputils.Fragments.apply(parsedInput)
+            val fragmentClass = tptputils.Fragments.getFragmentClassOfFragment(fragment)
+            val decidable = tptputils.Fragments.decidableFragment(fragmentClass)
+            generateResult(s"Fragment: ${tptputils.Fragments.pretty(fragment)}.\nClass: ${fragmentClass}\nKnown to be decidable: ${decidable}", "Success", "FreeText")
         }
         outfile.get.print(result)
         outfile.get.flush()
@@ -81,6 +87,8 @@ object TPTPUtilsApp {
           error = Some(s"File cannot be found or is not readable/writable: ${e.getMessage}")
         case e: TPTPParser.TPTPParseException =>
           error = Some(s"Input file could not be parsed, parse error at ${e.line}:${e.offset}: ${e.getMessage}")
+        case e: leo.modules.tptputils.UnsupportedInputException =>
+          error = Some(s"Input is inappropriate for the operation: ${e.getMessage}")
         case e: Throwable =>
           error = Some(s"Unexpected error: ${e.getMessage} (${e.printStackTrace()}). This is considered an implementation error; please report this!")
       } finally {
@@ -193,6 +201,15 @@ object TPTPUtilsApp {
         |               The source language is specified as a mandatory command parameter:
         |               --LRML   (for import from LegalRuleML)
         |
+        |  normalize    Transform the input wrt. some normal form given as parameter.
+        |               Valid parameters are (more to come):
+        |               --prenex (for prenex normal form)
+        |
+        | fragment      Analyze the input whether it is member of some known fragment of FOL.
+        |               Works only for FOF/TFF inputs, and only for inputs with a single
+        |               annotated formula.
+        |               Can recognize: Bernay-Schönfinkel-Ramsey (that's it, more to come.)
+        |
         | Options:
         |  --tstp       Enable TSTP-compatible output: The output in <output file>
         |               (or stdout) will start with a SZS status value and the output
@@ -212,6 +229,7 @@ object TPTPUtilsApp {
   final private case class  Import(from: leo.modules.tptputils.Import.ExternalLanguage) extends Command
   final private case class  Export(to: leo.modules.tptputils.Import.ExternalLanguage) extends Command
   final private case class Normalize(normalform: Normalization.Normalform) extends Command
+  final private case object Fragment extends Command
 
   private[this] final def parseArgs(args: Seq[String]): Unit = {
     var args0 = args
@@ -280,6 +298,7 @@ object TPTPUtilsApp {
           } else {
             throw new IllegalArgumentException("Command normalize expects a goal normal form, e.g., --prenex.")
           }
+        case "fragment" => Fragment
         case _ => throw new IllegalArgumentException(s"Unknown command '$hd'.")
       }
       command = Some(parsedCommand)

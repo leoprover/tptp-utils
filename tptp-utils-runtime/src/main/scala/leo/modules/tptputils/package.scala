@@ -5,7 +5,7 @@ import leo.datastructures.TPTP.AnnotatedFormula.FormulaType
 
 package object tptputils {
   class TPTPTransformException(message: String) extends RuntimeException(message)
-
+  class UnsupportedInputException(message: String) extends RuntimeException(message)
   /** Returns true iff `role` does not contain a subrole (i.e., role followed by dash followed by general term). */
   final def isSimpleRole(role: String): Boolean = !role.contains("-")
   /** Returns true iff `role` does contain a subrole (i.e., role followed by dash followed by general term). */
