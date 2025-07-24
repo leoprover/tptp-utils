@@ -41,7 +41,7 @@ object Fragments {
     fragment match {
       case Finite => FiniteFragmentClass
       case PrefixFragment(quantifierPrefix, predicates, functions, equality) =>
-        if (quantifiersMatchRegex(quantifierPrefix, "E*A*".r) && functions.tail.isEmpty)
+        if (quantifiersMatchRegex(quantifierPrefix, "E*A*".r) && functions.length <= 1) // constants are allowed
           BernaysSchoenfinkelRamseyFragment
         else UnknownFragmentClass
       case UnspecifiedFragment => UnknownFragmentClass
@@ -59,9 +59,12 @@ object Fragments {
     }
   }
 
-  def apply(problem: TPTP.Problem): Fragment = {
-    if (problem.formulas.size == 1 && problem.includes.isEmpty) apply(problem.formulas.head)
-    else throw new UnsupportedInputException("Fragment detection only supported for single formula inputs.")
+  def apply(problem: TPTP.Problem): Map[String, Fragment] = {
+    val formulas = problem.formulas
+    formulas.map { f =>
+      val fragment = apply(f)
+      f.name -> fragment
+    }.toMap
   }
 
   def apply(annotatedFormula: TPTP.AnnotatedFormula): Fragment = {

@@ -10,7 +10,7 @@ import java.io.{File, FileNotFoundException, PrintWriter}
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: String = "1.3.0"
+  final val version: String = "1.3.1"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
@@ -72,10 +72,16 @@ object TPTPUtilsApp {
             generateResult(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Fragment =>
             val parsedInput = TPTPParser.problem(infile.get)
-            val fragment = tptputils.Fragments.apply(parsedInput)
-            val fragmentClass = tptputils.Fragments.getFragmentClassOfFragment(fragment)
-            val decidable = tptputils.Fragments.decidableFragment(fragmentClass)
-            generateResult(s"Fragment: ${tptputils.Fragments.pretty(fragment)}.\nClass: ${fragmentClass}\nKnown to be decidable: ${decidable}", "Success", "FreeText")
+            val fragments = tptputils.Fragments.apply(parsedInput)
+            val header = "Formula name: Fragment, Fragment class, known to be decidable\n"
+            val header2 = "------------------------------------------------------------\n"
+            val result = header ++ header2 ++ fragments.map { case (formulaName, fragment) =>
+              val fragmentClass = tptputils.Fragments.getFragmentClassOfFragment(fragment)
+              val decidable = tptputils.Fragments.decidableFragment(fragmentClass)
+              s"$formulaName: ${tptputils.Fragments.pretty(fragment)}, ${fragmentClass}, $decidable"
+            }.mkString("\n")
+
+            generateResult(result, "Success", "FreeText")
         }
         outfile.get.print(result)
         outfile.get.flush()
