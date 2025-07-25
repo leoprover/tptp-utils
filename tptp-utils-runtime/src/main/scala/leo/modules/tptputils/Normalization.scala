@@ -14,6 +14,9 @@ object Normalization {
   @inline final def prenexNormalize(problem: TPTP.Problem): TPTP.Problem = PrenexNormalform(problem)
   @inline final def prenexNormalize(formulas: Seq[TPTP.AnnotatedFormula]): Seq[TPTP.AnnotatedFormula] = PrenexNormalform(formulas)
   @inline final def prenexNormalize(annotatedFormula: TPTP.AnnotatedFormula): TPTP.AnnotatedFormula = PrenexNormalform.normalizeAnnotatedFormula(annotatedFormula)
+  @inline final def prenexNormalizeTHF(annotatedFormula: TPTP.THFAnnotated): TPTP.THFAnnotated = PrenexNormalform.normalizeTHFAnnotatedFormula(annotatedFormula)
+  @inline final def prenexNormalizeTFF(annotatedFormula: TPTP.TFFAnnotated): TPTP.TFFAnnotated = PrenexNormalform.normalizeTFFAnnotatedFormula(annotatedFormula)
+  @inline final def prenexNormalizeFOF(annotatedFormula: TPTP.FOFAnnotated): TPTP.FOFAnnotated = PrenexNormalform.normalizeFOFAnnotatedFormula(annotatedFormula)
 
   private final object PrenexNormalform {
     def apply(problem: TPTP.Problem): TPTP.Problem = {
@@ -21,35 +24,29 @@ object Normalization {
     }
     def apply(formulas: Seq[TPTP.AnnotatedFormula]): Seq[TPTP.AnnotatedFormula] = formulas.map(normalizeAnnotatedFormula)
 
-    def normalizeAnnotatedFormula(annotatedFormula: TPTP.AnnotatedFormula): TPTP.AnnotatedFormula = {
-      import TPTP.THF
-      annotatedFormula match {
-        case f@TPTP.THFAnnotated(name, role, formula, annotations) => formula match {
-          case THF.Typing(_, _) => f
-          case THF.Logical(f0) => TPTP.THFAnnotated(name, role, THF.Logical(normalizeTHFFormula0(f0)), annotations)
-          case THF.Sequent(_, _) => f
-        }
-        case f@TPTP.TFFAnnotated(_, _, _, _) =>
-          val asTHF = SyntaxTransform.tffToTHF(f)
-          val normalizedTHF = normalizedTHFAnnotatedFormula(asTHF)
-          SyntaxDowngrade.thfToTFF(normalizedTHF)
-        case f@TPTP.FOFAnnotated(_, _, _, _) =>
-          val asTHF = SyntaxTransform.fofToTHF(f)
-          val normalizedTHF = normalizedTHFAnnotatedFormula(asTHF)
-          SyntaxDowngrade.thfToFOF(normalizedTHF)
-
-        case f@TPTP.TCFAnnotated(_, _, _, _) => f
-        case f@TPTP.CNFAnnotated(_, _, _, _) => f
-        case f@TPTP.TPIAnnotated(_, _, _, _) => f
+    def normalizeAnnotatedFormula(annotatedFormula: TPTP.AnnotatedFormula): TPTP.AnnotatedFormula = annotatedFormula match {
+        case f@TPTP.THFAnnotated(_, _, _, _) => normalizeTHFAnnotatedFormula(f)
+        case f@TPTP.TFFAnnotated(_, _, _, _) => normalizeTFFAnnotatedFormula(f)
+        case f@TPTP.FOFAnnotated(_, _, _, _) => normalizeFOFAnnotatedFormula(f)
+        case _ => annotatedFormula // no quantifiers in TCF, CNF, TPI
       }
-    }
-    private def normalizedTHFAnnotatedFormula(thfAnnotated: TPTP.THFAnnotated): TPTP.THFAnnotated = {
+    def normalizeTHFAnnotatedFormula(thfAnnotated: TPTP.THFAnnotated): TPTP.THFAnnotated = {
       import TPTP.THF
       thfAnnotated.formula match {
         case THF.Typing(_, _) => thfAnnotated
         case THF.Logical(f0) => TPTP.THFAnnotated(thfAnnotated.name, thfAnnotated.role, THF.Logical(normalizeTHFFormula(f0)), thfAnnotated.annotations)
         case THF.Sequent(_, _) => thfAnnotated
       }
+    }
+    def normalizeTFFAnnotatedFormula(tffAnnotated: TPTP.TFFAnnotated): TPTP.TFFAnnotated = {
+      val asTHF = SyntaxTransform.tffToTHF(tffAnnotated)
+      val normalizedTHF = normalizeTHFAnnotatedFormula(asTHF)
+      SyntaxDowngrade.thfToTFF(normalizedTHF)
+    }
+    def normalizeFOFAnnotatedFormula(fofAnnotated: TPTP.FOFAnnotated): TPTP.FOFAnnotated = {
+      val asTHF = SyntaxTransform.fofToTHF(fofAnnotated)
+      val normalizedTHF = normalizeTHFAnnotatedFormula(asTHF)
+      SyntaxDowngrade.thfToFOF(normalizedTHF)
     }
 
     private def invertTHFQuantifier(quantifier: TPTP.THF.Quantifier): TPTP.THF.Quantifier = {

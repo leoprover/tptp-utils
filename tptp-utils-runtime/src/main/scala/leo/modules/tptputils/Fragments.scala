@@ -59,7 +59,7 @@ object Fragments {
     }
   }
 
-  def apply(problem: TPTP.Problem): Map[String, Fragment] = {
+  def apply(problem: TPTP.Problem): Map[String, (TPTP.AnnotatedFormula, Fragment)] = {
     val formulas = problem.formulas
     formulas.map { f =>
       val fragment = apply(f)
@@ -67,7 +67,7 @@ object Fragments {
     }.toMap
   }
 
-  def apply(annotatedFormula: TPTP.AnnotatedFormula): Fragment = {
+  def apply(annotatedFormula: TPTP.AnnotatedFormula): (TPTP.AnnotatedFormula, Fragment) = {
     annotatedFormula match {
       case TPTP.THFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
       case f@TPTP.TFFAnnotated(_, _, _, _) => apply(f, implicitNormalization = true)
@@ -77,16 +77,22 @@ object Fragments {
       case TPTP.TPIAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
     }
   }
-  def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): Fragment = {
+  def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): (TPTP.AnnotatedFormula, Fragment) = {
     import leo.datastructures.TPTP.TFF
-    val processedFormula = if (implicitNormalization) Normalization.prenexNormalize(annotatedFormula) else annotatedFormula
-    processedFormula.asInstanceOf[TPTP.TFFAnnotated].formula match { // type casting is ugly, the world is bad.
-      case TFF.Typing(_, _) => UnspecifiedFragment
-      case TFF.Logical(formula) => analizeTFFFormula(formula)
-      case TFF.Sequent(_, _) => UnspecifiedFragment
+    annotatedFormula.formula match { // type casting is ugly, the world is bad.
+      case TFF.Logical(formula) =>
+        // transform to negated_conjecture with ~  first if it is a conjecture
+        val annotatedFormula0 = if (annotatedFormula.role == "conjecture") {
+          TPTP.TFFAnnotated(annotatedFormula.name, "negated_conjecture", TFF.Logical(TFF.UnaryFormula(TFF.~, formula)), annotatedFormula.annotations)
+        } else annotatedFormula
+        val processedFormula = if (implicitNormalization) Normalization.prenexNormalizeTFF(annotatedFormula0) else annotatedFormula0
+        (processedFormula.formula: @unchecked) match {
+          case TFF.Logical(formula0) => (processedFormula, analizeTFFFormula(formula0))
+        }
+      case _ => (annotatedFormula, UnspecifiedFragment)
     }
   }
-  def apply(annotatedFormula: TPTP.FOFAnnotated, implicitNormalization: Boolean): Fragment =
+  def apply(annotatedFormula: TPTP.FOFAnnotated, implicitNormalization: Boolean): (TPTP.AnnotatedFormula, Fragment) =
     apply(SyntaxTransform.fofToTFF(annotatedFormula), implicitNormalization)
 
   private def tffQuantifierToQuantifierType(quantifier: TPTP.TFF.Quantifier): QuantifierType = (quantifier: @unchecked) match {
