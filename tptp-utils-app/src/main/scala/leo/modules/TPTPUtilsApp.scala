@@ -10,12 +10,15 @@ import java.io.{File, FileNotFoundException, PrintWriter}
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: String = "1.3.2"
+  final val version: String = "1.3.3"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
   private[this] var command: Option[Command] = None
   private[this] var tstpOutput: Boolean = false
+  private[this] var outputFileOverwrite: Boolean = false
+
+  final class FileAlreadyExistsException(msg: String) extends RuntimeException(msg)
 
   final def main(args: Array[String]): Unit = {
     if (args.contains("--help")) {
@@ -33,7 +36,11 @@ object TPTPUtilsApp {
       try {
         parseArgs(args.toSeq)
         // Allocate output file
-        outfile = Some(if (outputFileName.isEmpty) new PrintWriter(System.out) else new PrintWriter(new File(outputFileName.get)))
+        outfile = Some(if (outputFileName.isEmpty) new PrintWriter(System.out) else {
+          val fd = new File(outputFileName.get)
+          if (!fd.exists() || outputFileOverwrite) new PrintWriter(new File(outputFileName.get))
+          else throw new FileAlreadyExistsException(s"File '${outputFileName.get}' already exists. If you really want to overwrite the file, use --overwrite option.")
+        })
         // Read input
         infile = Some(if (inputFileName == "-") io.Source.stdin else io.Source.fromFile(inputFileName))
         // Parse input
@@ -93,6 +100,8 @@ object TPTPUtilsApp {
           if (!tstpOutput) usage()
         case e: FileNotFoundException =>
           error = Some(s"File cannot be found or is not readable/writable: ${e.getMessage}")
+        case e: FileAlreadyExistsException =>
+          error = Some(e.getMessage)
         case e: TPTPParser.TPTPParseException =>
           error = Some(s"Input file could not be parsed, parse error at ${e.line}:${e.offset}: ${e.getMessage}")
         case e: leo.modules.tptputils.UnsupportedInputException =>
@@ -177,7 +186,7 @@ object TPTPUtilsApp {
   }
 
   private[this] final def usage(): Unit = {
-    println(s"usage: $name [--tstp] <command> [command parameters] <problem file> [<output file>]")
+    println(s"usage: $name [--tstp] [--overwrite] <command> [command parameters] <problem file> [<output file>]")
     println(
       """
         | <command> is the command to be executed (see below). <problem file> can be
@@ -232,8 +241,11 @@ object TPTPUtilsApp {
         |               (or stdout) will start with a SZS status value and the output
         |               will be wrapped within SZS BEGIN and SZS END block delimiters.
         |               Disabled by default.
-        |  --version    Prints the version number of the executable and terminates.
-        |  --help       Prints this description and terminates.
+        |  --overwrite  Do not complain if specifed <output file> already exists,
+        |               overwrite that file. Has no effect it no <output file> is
+        |               provided. Disabled by default.
+        |  --version    Print the version number of the executable and terminate.
+        |  --help       Print this description and terminate.
         |""".stripMargin)
   }
 
@@ -252,9 +264,12 @@ object TPTPUtilsApp {
     var args0 = args
     try {
       var hd = args0.head
-      // Optional tstp flag
-      if (hd == "--tstp") {
-        tstpOutput = true
+      while (hd.startsWith("--")) { // Optional flags
+        hd match {
+          case "--tstp" => tstpOutput = true
+          case "--overwrite" => outputFileOverwrite = true
+          case _ => throw new IllegalArgumentException(s"Unknown parameter '$hd'.")
+        }
         args0 = args0.tail
         hd = args0.head
       }
