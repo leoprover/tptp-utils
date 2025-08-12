@@ -25,9 +25,9 @@ Current features include:
 and prints its result to stdout (or some output file), as follows:
 
 ```
-usage: tptputils [--tstp] <command> [command parameters] <problem file> [<output file>]
+usage: tptputils [parameters] <command> [command parameters] <problem file>
 
- <command> is the command to be executed (see below). <problem file> can be
+  <command> is the command to be executed (see below). <problem file> can be
  either a file name or '-' (without quotes) for stdin. If <output file> is
  specified, the result is written to <output file>, otherwise to stdout.
 
@@ -45,21 +45,47 @@ usage: tptputils [--tstp] <command> [command parameters] <problem file> [<output
                The goal language is specified as a mandatory command parameter
                using one of the following values:
                --CNF, --TCF, --FOF, --TFF, --THF
+  downgrade    Parse a problem, transform and print it in a less expressive TPTP
+               language. This will fail if the problem contains formulae that are
+               not directly expressible in the goal language, e.g., lambdas in THF
+               when transforming to TFF and similar.
+               If the goal language is more expressive
+               instead, then `transform` will be executed instead.
+
+               The goal language is specified as a mandatory command parameter
+               using one of the following values:
+               --TFF
+
   lint         Inspect the input problem for suspicious constructs, unused symbols,
                malformed logic specifications, etc.
+
   import       Translate, if possible, the input file into an adequate TPTP
                representation.
 
                The source language is specified as a mandatory command parameter:
                --LRML   (for import from LegalRuleML)
 
+  normalize    Transform the input wrt. some normal form given as parameter.
+               Valid parameters are (more to come):
+               --prenex (for prenex normal form)
+
+ fragment      Analyze the input whether it is member of some known fragment of FOL.
+               Works only for FOF/TFF inputs, and only for inputs with a single
+               annotated formula.
+               Can recognize: Bernay-Schönfinkel-Ramsey (that's it, more to come.)
+
  Options:
   --tstp       Enable TSTP-compatible output: The output in <output file>
                (or stdout) will start with a SZS status value and the output
                will be wrapped within SZS BEGIN and SZS END block delimiters.
                Disabled by default.
-  --version    Prints the version number of the executable and terminates.
-  --help       Prints this description and terminates.
+
+  --output <output file>
+               Write output to <output file> instead of stdout.
+
+  --version    Print the version number of the executable and terminate.
+
+  --help       Print this description and terminate.
 ```
 
 ### Example 1:

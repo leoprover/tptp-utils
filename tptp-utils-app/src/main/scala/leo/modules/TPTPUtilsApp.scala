@@ -337,7 +337,6 @@ object TPTPUtilsApp {
       // Infile
       inputFileName = hd
       args0 = args0.tail
-      // Optional outfile
       if (args0.nonEmpty) {
         throw new IllegalArgumentException(s"Superfluous arguments supplied.")
       }
