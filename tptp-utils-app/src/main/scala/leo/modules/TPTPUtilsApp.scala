@@ -10,13 +10,12 @@ import java.io.{File, FileNotFoundException, PrintWriter}
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: String = "1.3.3"
+  final val version: String = "1.3.4"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
   private[this] var command: Option[Command] = None
   private[this] var tstpOutput: Boolean = false
-  private[this] var outputFileOverwrite: Boolean = false
 
   final class FileAlreadyExistsException(msg: String) extends RuntimeException(msg)
 
@@ -36,11 +35,7 @@ object TPTPUtilsApp {
       try {
         parseArgs(args.toSeq)
         // Allocate output file
-        outfile = Some(if (outputFileName.isEmpty) new PrintWriter(System.out) else {
-          val fd = new File(outputFileName.get)
-          if (!fd.exists() || outputFileOverwrite) new PrintWriter(new File(outputFileName.get))
-          else throw new FileAlreadyExistsException(s"File '${outputFileName.get}' already exists. If you really want to overwrite the file, use --overwrite option.")
-        })
+        outfile = Some(if (outputFileName.isEmpty) new PrintWriter(System.out) else new PrintWriter(new File(outputFileName.get)))
         // Read input
         infile = Some(if (inputFileName == "-") io.Source.stdin else io.Source.fromFile(inputFileName))
         // Parse input
@@ -72,7 +67,7 @@ object TPTPUtilsApp {
           case Import(from) =>
             val result = tptputils.Import(infile.get, from)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
-          case Export(to) => ???
+          case Export(_) => ???
           case Normalize(normalform) =>
             val parsedInput = TPTPParser.problem(infile.get)
             val result = tptputils.Normalization(normalform,parsedInput)
@@ -88,7 +83,7 @@ object TPTPUtilsApp {
             val output2 = header ++ header2 ++ fragments.map { case (formulaName, (_,fragment)) =>
               val fragmentClass = tptputils.Fragments.getFragmentClassOfFragment(fragment)
               val decidable = tptputils.Fragments.decidableFragment(fragmentClass)
-              s"$formulaName: ${tptputils.Fragments.pretty(fragment)}, ${fragmentClass}, $decidable"
+              s"$formulaName: ${tptputils.Fragments.pretty(fragment)}, $fragmentClass, $decidable"
             }.mkString("\n")
             generateResultWithPrefix(output1, "Success", "ListOfFormulas") ++ generateResult(output2, "Success", "FreeText")
         }
@@ -169,8 +164,6 @@ object TPTPUtilsApp {
     sb.toString()
   }
   private[this] final def generateResult(result: String, szsStatus: String, szsDatatype: String, extraTSTPMessage: String = ""): String = {
-    import java.util.Calendar
-
     val sb: StringBuilder = new StringBuilder()
     if (result.nonEmpty) {
       if (tstpOutput) sb.append(s"% SZS output start $szsDatatype for $inputFileName\n")
@@ -186,7 +179,7 @@ object TPTPUtilsApp {
   }
 
   private[this] final def usage(): Unit = {
-    println(s"usage: $name [--tstp] [--overwrite] <command> [command parameters] <problem file> [<output file>]")
+    println(s"usage: $name [options] <command> [command parameters] <problem file>")
     println(
       """
         | <command> is the command to be executed (see below). <problem file> can be
@@ -241,10 +234,12 @@ object TPTPUtilsApp {
         |               (or stdout) will start with a SZS status value and the output
         |               will be wrapped within SZS BEGIN and SZS END block delimiters.
         |               Disabled by default.
-        |  --overwrite  Do not complain if specifed <output file> already exists,
-        |               overwrite that file. Has no effect it no <output file> is
-        |               provided. Disabled by default.
+        |
+        |  --output <output file>
+        |               Write output to <output file> instead of stdout.
+        |
         |  --version    Print the version number of the executable and terminate.
+        |
         |  --help       Print this description and terminate.
         |""".stripMargin)
   }
@@ -267,7 +262,10 @@ object TPTPUtilsApp {
       while (hd.startsWith("--")) { // Optional flags
         hd match {
           case "--tstp" => tstpOutput = true
-          case "--overwrite" => outputFileOverwrite = true
+          case "--output" =>
+            val file = args0.tail.head
+            outputFileName = Some(file)
+            args0 = args0.tail
           case _ => throw new IllegalArgumentException(s"Unknown parameter '$hd'.")
         }
         args0 = args0.tail
@@ -341,7 +339,7 @@ object TPTPUtilsApp {
       args0 = args0.tail
       // Optional outfile
       if (args0.nonEmpty) {
-        outputFileName = Some(args0.head)
+        throw new IllegalArgumentException(s"Superfluous arguments supplied.")
       }
     } catch {
       case _:NoSuchElementException | _:ArrayIndexOutOfBoundsException =>
