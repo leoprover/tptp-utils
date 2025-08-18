@@ -74,18 +74,8 @@ object TPTPUtilsApp {
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Fragment =>
             val parsedInput = TPTPParser.problem(infile.get)
-            val fragments = tptputils.Fragments.apply(parsedInput)
-            // first output: Restate problem (maybe transformations have taken place)
-            val output1 = fragments.values.map(_._1.pretty).mkString("\n\n")
-            // second output: Formula class table
-            val header = "Formula name: Fragment, Fragment class, known to be decidable\n"
-            val header2 = "------------------------------------------------------------\n"
-            val output2 = header ++ header2 ++ fragments.map { case (formulaName, (_,fragment)) =>
-              val fragmentClass = tptputils.Fragments.getFragmentClassOfFragment(fragment)
-              val decidable = tptputils.Fragments.decidableFragment(fragmentClass)
-              s"$formulaName: ${tptputils.Fragments.pretty(fragment)}, $fragmentClass, $decidable"
-            }.mkString("\n")
-            generateResultWithPrefix(output1, "Success", "ListOfFormulas") ++ generateResult(output2, "Success", "FreeText")
+            val result = tptputils.Fragments.apply(parsedInput)
+            generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
         }
         outfile.get.print(result)
         outfile.get.flush()
