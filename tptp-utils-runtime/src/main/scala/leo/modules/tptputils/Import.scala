@@ -1,13 +1,15 @@
 package leo.modules.tptputils
 
 import leo.datastructures.TPTP
-import leo.modules.tptputils
+
+import java.nio.file.Path
+import scala.io.Source
 
 object Import {
   sealed abstract class ExternalLanguage
   case object LegalRuleML extends ExternalLanguage
 
-  final def apply(file: io.Source, from: ExternalLanguage): TPTP.Problem = {
+  final def apply(file: Path, from: ExternalLanguage): TPTP.Problem = {
     from match {
       case LegalRuleML => new LegalRuleMLImport().apply(file)
     }
@@ -18,9 +20,9 @@ object Import {
     private def generateName(): String = { val name = s"'formula_$counter'"; counter += 1; name  }
     private def lrml(elem: xml.Node): Boolean = elem.prefix == "lrml"
 
-    def apply(file: io.Source): TPTP.Problem = {
+    def apply(path: Path): TPTP.Problem = {
       try {
-        val topNode = xml.XML.load(new SourceInputStream(file))
+        val topNode = xml.XML.load(new SourceInputStream(Source.fromFile(path.toFile)))
         lrmlFile(topNode)
       } catch {
       case e: Throwable => throw new IllegalArgumentException(e.toString)

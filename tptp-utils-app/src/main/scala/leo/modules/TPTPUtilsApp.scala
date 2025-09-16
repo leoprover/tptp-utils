@@ -2,22 +2,23 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.Problem
-import leo.modules.tptputils.{Linter, ParseTree, SyntaxDowngrade, SyntaxTransform, Normalization}
+import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform}
 import leo.modules.input.TPTPParser
 
 import scala.io.Source
 import java.io.{File, FileNotFoundException, PrintWriter}
+import java.nio.file.Path
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: String = "1.3.6"
+  final val version: String = "1.4.0"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
   private[this] var command: Option[Command] = None
   private[this] var tstpOutput: Boolean = false
-
-  final class FileAlreadyExistsException(msg: String) extends RuntimeException(msg)
+  private[this] var recursiveParsing: Boolean = false
+  private[this] val tptpHomeDirectory: Option[String] = sys.env.get("TPTP")
 
   final def main(args: Array[String]): Unit = {
     if (args.contains("--help")) {
@@ -28,7 +29,7 @@ object TPTPUtilsApp {
     }
     if (args.isEmpty) usage()
     else {
-      var infile: Option[Source] = None
+      var infile2: Option[Path] = None
       var outfile: Option[PrintWriter] = None
       var error: Option[String] = None
 
@@ -37,43 +38,42 @@ object TPTPUtilsApp {
         // Allocate output file
         outfile = Some(if (outputFileName.isEmpty) new PrintWriter(System.out) else new PrintWriter(new File(outputFileName.get)))
         // Read input
-        infile = Some(if (inputFileName == "-") io.Source.stdin else io.Source.fromFile(inputFileName))
+        infile2 = Some(if (inputFileName == "-") Path.of("-") else Path.of(inputFileName).toAbsolutePath)
         // Parse input
         val result = command.get match {
           case Parse =>
-            val result = TPTPParser.problem(infile.get)
+            val result = parseTPTPFile(infile2.get)
             generateResultWithPrefix(result.pretty, "Success", "")
           case Reparse =>
-            val parsedInput = TPTPParser.problem(infile.get)
+            val parsedInput = parseTPTPFile(infile2.get)
             val json: String = ParseTree(parsedInput)
             generateResultWithPrefix(json, "Success", "LogicalData")
           case Transform(goal) =>
-            val parsedInput = TPTPParser.problem(infile.get)
+            val parsedInput = parseTPTPFile(infile2.get)
             val transformed = SyntaxTransform(goal, parsedInput)
             generateResultWithPrefix(tptpProblemToString(transformed), "Success", "ListOfFormulae")
           case Downgrade(goal) =>
             try {
-              val parsedInput = TPTPParser.problem(infile.get)
+              val parsedInput = parseTPTPFile(infile2.get)
               val transformed = SyntaxDowngrade(goal, parsedInput)
               generateResultWithPrefix(tptpProblemToString(transformed), "Success", "ListOfFormulae")
             } catch {
               case e: IllegalArgumentException => generateResultWithPrefix("", "InputError", "", e.getMessage)
             }
           case Lint =>
-            val parsedInput = TPTPParser.problem(infile.get)
+            val parsedInput = parseTPTPFile(infile2.get)
             val lint = Linter(parsedInput)
             val result = lint.mkString("\n")
             generateResultWithPrefix(result, "Success", "LogicalData")
           case Import(from) =>
-            val result = tptputils.Import(infile.get, from)
+            val result = tptputils.Import(infile2.get, from)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
-          case Export(_) => ???
           case Normalize(normalform) =>
-            val parsedInput = TPTPParser.problem(infile.get)
+            val parsedInput = parseTPTPFile(infile2.get)
             val result = tptputils.Normalization(normalform,parsedInput)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Fragment =>
-            val parsedInput = TPTPParser.problem(infile.get)
+            val parsedInput = parseTPTPFile(infile2.get)
             val result = tptputils.Fragments.apply(parsedInput)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
         }
@@ -85,8 +85,6 @@ object TPTPUtilsApp {
           if (!tstpOutput) usage()
         case e: FileNotFoundException =>
           error = Some(s"File cannot be found or is not readable/writable: ${e.getMessage}")
-        case e: FileAlreadyExistsException =>
-          error = Some(e.getMessage)
         case e: TPTPParser.TPTPParseException =>
           error = Some(s"Input file could not be parsed, parse error at ${e.line}:${e.offset}: ${e.getMessage}")
         case e: leo.modules.tptputils.UnsupportedInputException =>
@@ -115,7 +113,6 @@ object TPTPUtilsApp {
           }
         }
         try {
-          infile.foreach(_.close())
           outfile.foreach(_.close())
         } catch {
           case _: Throwable => ()
@@ -125,7 +122,49 @@ object TPTPUtilsApp {
     }
   }
 
-  def tptpProblemToString(problem: Problem): String = {
+  private[this] def parseTPTPFile(path: Path): TPTP.Problem = {
+    if (recursiveParsing) parseTPTPFileWithIncludes(path) else parseTPTPFileWithoutIncludes(path)
+  }
+  private[this] def parseTPTPFileWithoutIncludes(path: Path): TPTP.Problem = {
+    if (path.toString == "-") {
+      TPTPParser.problem(Source.stdin)
+    } else {
+      TPTPParser.problem(Source.fromFile(path.toFile))
+    }
+  }
+  private[this] def parseTPTPFileWithIncludes(path: Path): TPTP.Problem = {
+    val includesAlreadyRead: collection.mutable.Set[Path] = collection.mutable.Set.empty
+
+    def parseTPTPFile0(file: Source, filepath: Path): TPTP.Problem = {
+      includesAlreadyRead.addOne(filepath.normalize())
+      val problem = TPTPParser.problem(file)
+      val recursivelyParsedIncludes = problem.includes.map { case (include, _) =>
+        val includePath = filepath.getParent.resolve(include)
+        if (includePath.toFile.exists()) {
+          parseTPTPFile0(Source.fromFile(includePath.toFile), includePath)
+        } else {
+          tptpHomeDirectory match {
+            case Some(dir) =>
+              val defaultincludePath = Path.of(dir).resolve(include)
+              parseTPTPFile0(Source.fromFile(defaultincludePath.toFile), defaultincludePath)
+            case None => throw new FileNotFoundException(s"Include '${filepath.toString}' not found. Did you forget to define the TPTP environment variable?")
+          }
+        }
+      }
+      recursivelyParsedIncludes.foldRight(problem) { case (parsedInclude, acc) =>
+        TPTP.Problem(Seq.empty, parsedInclude.formulas ++ acc.formulas, parsedInclude.formulaComments concat acc.formulaComments)
+      }
+    }
+
+    if (path.toString == "-") {
+      parseTPTPFile0(Source.stdin, Path.of(sys.props("user.dir")))
+    } else {
+      parseTPTPFile0(Source.fromFile(path.toFile), path)
+    }
+  }
+
+
+  private[this] final def tptpProblemToString(problem: Problem): String = {
     val sb: StringBuilder = new StringBuilder()
     problem.includes foreach { case (file, (selection, _)) =>
       if (selection.isEmpty) sb.append(s"include('$file').\n")
@@ -225,6 +264,10 @@ object TPTPUtilsApp {
         |               will be wrapped within SZS BEGIN and SZS END block delimiters.
         |               Disabled by default.
         |
+        | --recursive   Recursively parse all includes contained in the input file.
+        |               This might make it necessary to set the TPTP environment variable
+        |               if TPTP-specific includes need to be resolved.
+        |
         |  --output <output file>
         |               Write output to <output file> instead of stdout.
         |
@@ -241,7 +284,6 @@ object TPTPUtilsApp {
   final private case class  Downgrade(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
   final private case object Lint extends Command
   final private case class  Import(from: leo.modules.tptputils.Import.ExternalLanguage) extends Command
-  final private case class  Export(to: leo.modules.tptputils.Import.ExternalLanguage) extends Command
   final private case class Normalize(normalform: Normalization.Normalform) extends Command
   final private case object Fragment extends Command
 
@@ -252,6 +294,7 @@ object TPTPUtilsApp {
       while (hd.startsWith("--")) { // Optional flags
         hd match {
           case "--tstp" => tstpOutput = true
+          case "--recursive" => recursiveParsing = true
           case "--output" =>
             val file = args0.tail.head
             outputFileName = Some(file)
@@ -291,18 +334,6 @@ object TPTPUtilsApp {
               case _ => throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
             }
             Import(lang)
-          } else {
-            throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
-          }
-        case "export" =>
-          val param = args0.tail.head
-          if (param.startsWith("--")) {
-            args0 = args0.tail
-            val lang = param.drop(2) match {
-              case "LRML" => leo.modules.tptputils.Import.LegalRuleML
-              case _ => throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
-            }
-            Export(lang)
           } else {
             throw new IllegalArgumentException("Command transform expects a goal language parameter, e.g., --LRML.")
           }
