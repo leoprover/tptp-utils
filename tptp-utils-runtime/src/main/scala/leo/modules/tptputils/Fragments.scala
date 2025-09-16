@@ -33,9 +33,11 @@ object Fragments {
 
 
   sealed abstract class FragmentClass
-  case object FiniteFragmentClass extends FragmentClass
-  case object BernaysSchoenfinkelRamseyFragment extends FragmentClass
-  case object UnknownFragmentClass extends FragmentClass
+  final case object FiniteFragmentClass extends FragmentClass
+  final case object BernaysSchoenfinkelRamseyFragment extends FragmentClass {
+    override def toString: String = "BernaysSchoenfinkelRamsey"
+  }
+  final case object UnknownFragmentClass extends FragmentClass
 
   final def getFragmentClassOfFragment(fragment: Fragment): FragmentClass = {
     fragment match {

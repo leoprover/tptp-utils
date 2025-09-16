@@ -29,7 +29,7 @@ object TPTPUtilsApp {
     }
     if (args.isEmpty) usage()
     else {
-      var infile2: Option[Path] = None
+      var infile: Option[Path] = None
       var outfile: Option[PrintWriter] = None
       var error: Option[String] = None
 
@@ -38,42 +38,42 @@ object TPTPUtilsApp {
         // Allocate output file
         outfile = Some(if (outputFileName.isEmpty) new PrintWriter(System.out) else new PrintWriter(new File(outputFileName.get)))
         // Read input
-        infile2 = Some(if (inputFileName == "-") Path.of("-") else Path.of(inputFileName).toAbsolutePath)
+        infile = Some(if (inputFileName == "-") Path.of("-") else Path.of(inputFileName).toAbsolutePath)
         // Parse input
         val result = command.get match {
           case Parse =>
-            val result = parseTPTPFile(infile2.get)
+            val result = parseTPTPFile(infile.get)
             generateResultWithPrefix(result.pretty, "Success", "")
           case Reparse =>
-            val parsedInput = parseTPTPFile(infile2.get)
+            val parsedInput = parseTPTPFile(infile.get)
             val json: String = ParseTree(parsedInput)
             generateResultWithPrefix(json, "Success", "LogicalData")
           case Transform(goal) =>
-            val parsedInput = parseTPTPFile(infile2.get)
+            val parsedInput = parseTPTPFile(infile.get)
             val transformed = SyntaxTransform(goal, parsedInput)
             generateResultWithPrefix(tptpProblemToString(transformed), "Success", "ListOfFormulae")
           case Downgrade(goal) =>
             try {
-              val parsedInput = parseTPTPFile(infile2.get)
+              val parsedInput = parseTPTPFile(infile.get)
               val transformed = SyntaxDowngrade(goal, parsedInput)
               generateResultWithPrefix(tptpProblemToString(transformed), "Success", "ListOfFormulae")
             } catch {
               case e: IllegalArgumentException => generateResultWithPrefix("", "InputError", "", e.getMessage)
             }
           case Lint =>
-            val parsedInput = parseTPTPFile(infile2.get)
+            val parsedInput = parseTPTPFile(infile.get)
             val lint = Linter(parsedInput)
             val result = lint.mkString("\n")
             generateResultWithPrefix(result, "Success", "LogicalData")
           case Import(from) =>
-            val result = tptputils.Import(infile2.get, from)
+            val result = tptputils.Import(infile.get, from)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Normalize(normalform) =>
-            val parsedInput = parseTPTPFile(infile2.get)
+            val parsedInput = parseTPTPFile(infile.get)
             val result = tptputils.Normalization(normalform,parsedInput)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
           case Fragment =>
-            val parsedInput = parseTPTPFile(infile2.get)
+            val parsedInput = parseTPTPFile(infile.get)
             val result = tptputils.Fragments.apply(parsedInput)
             generateResultWithPrefix(tptpProblemToString(result), "Success", "ListOfFormulae")
         }
