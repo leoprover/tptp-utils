@@ -69,16 +69,21 @@ usage: tptputils [parameters] <command> [command parameters] <problem file>
                Valid parameters are (more to come):
                --prenex (for prenex normal form)
 
- fragment      Analyze the input whether it is member of some known fragment of FOL.
+  fragment      Analyze the input whether it is member of some known fragment of FOL.
                Works only for FOF/TFF inputs, and only for inputs with a single
                annotated formula.
-               Can recognize: Bernay-Schönfinkel-Ramsey (that's it, more to come.)
+               Can recognize: Bernay-Schönfinkel-Ramsey, propositional (without equality).
+               (that's it, more to come.).
 
  Options:
-  --tstp       Enable TSTP-compatible output: The output in <output file>
+   --tstp      Enable TSTP-compatible output: The output in <output file>
                (or stdout) will start with a SZS status value and the output
                will be wrapped within SZS BEGIN and SZS END block delimiters.
                Disabled by default.
+               
+   --recursive Recursively parse all includes contained in the input file.
+               This might make it necessary to set the TPTP environment variable
+               if TPTP-specific includes need to be resolved.
 
   --output <output file>
                Write output to <output file> instead of stdout.

@@ -9,59 +9,62 @@ import scala.util.matching.Regex
 
 object Fragments {
   sealed abstract class Fragment
-  case object Finite extends Fragment
-  case class PrefixFragment(quantifierPrefix: Seq[QuantifierType], predicates: Seq[Int], functions: Seq[Int], equality: Boolean) extends Fragment
-  case object UnspecifiedFragment extends Fragment
+  final case object PropositionalFragment extends Fragment
+  final case class PrefixFragment(quantifierPrefix: Seq[QuantifierType], predicates: Seq[Int], functions: Seq[Int], equality: Boolean) extends Fragment
+  final case object UnspecifiedFragment extends Fragment
 
   final def pretty(fragment: Fragment): String = {
     fragment match {
-      case Finite => "Finite"
+      case PropositionalFragment => "Propositional"
       case PrefixFragment(quantifierPrefix, predicates, functions, equality) =>
         val quantifiersToString = quantifierPrefix.map { case E => "E" case A => "A" }.mkString
         val predicatesAsString = predicates.mkString("[", ",", "]")
         val functionsAsString = functions.mkString("[", ",", "]")
         val equalityAsString = if (equality) "=" else ""
-        s"(${quantifiersToString}, $predicatesAsString, $functionsAsString)$equalityAsString"
+        s"($quantifiersToString, $predicatesAsString, $functionsAsString)$equalityAsString"
       case UnspecifiedFragment => "UnspecifiedFragment"
     }
   }
 
   sealed abstract class QuantifierType
-  case object E extends QuantifierType
-  case object A extends QuantifierType
+  final case object E extends QuantifierType
+  final case object A extends QuantifierType
 
 
 
   sealed abstract class FragmentClass
-  final case object FiniteFragmentClass extends FragmentClass
-  final case object BernaysSchoenfinkelRamseyFragment extends FragmentClass {
+  final case object PropositionalFragmentClass extends FragmentClass {
+    override def toString: String = "Propositional"
+  }
+  final case object BernaysSchoenfinkelRamseyFragmentClass extends FragmentClass {
     override def toString: String = "BernaysSchoenfinkelRamsey"
   }
   final case object UnknownFragmentClass extends FragmentClass
 
   final def getFragmentClassOfFragment(fragment: Fragment): FragmentClass = {
     fragment match {
-      case Finite => FiniteFragmentClass
+      case PropositionalFragment => PropositionalFragmentClass
       case PrefixFragment(quantifierPrefix, predicates, functions, equality) =>
         if (quantifiersMatchRegex(quantifierPrefix, "E*A*".r) && functions.length <= 1) // constants are allowed
-          BernaysSchoenfinkelRamseyFragment
+          BernaysSchoenfinkelRamseyFragmentClass
         else UnknownFragmentClass
       case UnspecifiedFragment => UnknownFragmentClass
     }
   }
-  private final def quantifiersMatchRegex(quantifiers: Seq[QuantifierType], regex: Regex): Boolean = {
+  private[this] final def quantifiersMatchRegex(quantifiers: Seq[QuantifierType], regex: Regex): Boolean = {
     val quantifiersToString = quantifiers.map { case E => "E" case A => "A" }.mkString
     regex.matches(quantifiersToString)
   }
 
   final def decidableFragment(fragment: FragmentClass): Boolean = {
     fragment match {
-      case BernaysSchoenfinkelRamseyFragment => true
+      case PropositionalFragmentClass => true
+      case BernaysSchoenfinkelRamseyFragmentClass => true
       case _ => false
     }
   }
 
-  def apply(problem: TPTP.Problem): TPTP.Problem = {
+  final def apply(problem: TPTP.Problem): (TPTP.Problem, FragmentClass) = {
     val formulas = problem.formulas
     val formulasWithFragmentInfo = formulas.map { f =>
       val fragment = apply(f)
@@ -71,11 +74,18 @@ object Fragments {
       val info = info0._2
       (info._1,  Seq(TPTP.Comment(TPTP.Comment.CommentFormat.LINE, TPTP.Comment.CommentType.NORMAL, pretty(info._2))))
     }.toMap
-    TPTP.Problem(problem.includes, formulasWithFragmentInfo.map(_._1), comments)
-
+    val augmentedProblem = TPTP.Problem(problem.includes, formulasWithFragmentInfo.map(_._1), comments)
+    val allFragments = formulasWithFragmentInfo.map(_._2).map(_._2)
+    if (allFragments.isEmpty)
+      (augmentedProblem, UnknownFragmentClass)
+    else {
+      val hd = allFragments.head
+      if (allFragments.forall(_ == hd)) (augmentedProblem, getFragmentClassOfFragment(hd))
+      else (augmentedProblem, UnknownFragmentClass)
+    }
   }
 
-  private[this] def updateAnnotationWithFragment(annotation: TPTP.Annotations, fragment: Fragment): TPTP.Annotations = {
+  private[this] final def updateAnnotationWithFragment(annotation: TPTP.Annotations, fragment: Fragment): TPTP.Annotations = {
     val fragmentClass = getFragmentClassOfFragment(fragment)
     val annotationEntry = fragmentClass match {
       case UnknownFragmentClass => TPTP.GeneralTerm(Seq.empty, None)
@@ -90,7 +100,7 @@ object Fragments {
     }
   }
 
-  def apply(annotatedFormula: TPTP.AnnotatedFormula): (TPTP.AnnotatedFormula, Fragment) = {
+  final def apply(annotatedFormula: TPTP.AnnotatedFormula): (TPTP.AnnotatedFormula, Fragment) = {
     annotatedFormula match {
       case TPTP.THFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
       case f@TPTP.TFFAnnotated(name, role, formula, annotation) =>
@@ -106,7 +116,7 @@ object Fragments {
       case TPTP.TPIAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
     }
   }
-  def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): Fragment = {
+  final def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): Fragment = {
     import leo.datastructures.TPTP.TFF
     annotatedFormula.formula match {
       case TFF.Logical(formula) =>
@@ -116,19 +126,19 @@ object Fragments {
         } else annotatedFormula
         val processedFormula = if (implicitNormalization) Normalization.prenexNormalizeTFF(annotatedFormula0) else annotatedFormula0
         (processedFormula.formula: @unchecked) match {
-          case TFF.Logical(formula0) => analizeTFFFormula(formula0)
+          case TFF.Logical(formula0) => analyzeTFFFormula(formula0)
         }
       case _ => UnspecifiedFragment
     }
   }
-  def apply(annotatedFormula: TPTP.FOFAnnotated, implicitNormalization: Boolean): Fragment =
+  final def apply(annotatedFormula: TPTP.FOFAnnotated, implicitNormalization: Boolean): Fragment =
     apply(SyntaxTransform.fofToTFF(annotatedFormula), implicitNormalization)
 
-  private def tffQuantifierToQuantifierType(quantifier: TPTP.TFF.Quantifier): QuantifierType = (quantifier: @unchecked) match {
+  private[this] final def tffQuantifierToQuantifierType(quantifier: TPTP.TFF.Quantifier): QuantifierType = (quantifier: @unchecked) match {
     case TFF.! => A
     case TFF.? => E
   }
-  private def analizeTFFFormula(formula: TPTP.TFF.Formula): Fragment = {
+  private[this] final def analyzeTFFFormula(formula: TPTP.TFF.Formula): Fragment = {
     val prefixQuants = collectPrefixQuantifier(formula)
     val (hasNestedQuants, hasEquality, fool, ncl) = hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical(stripPrefixQuantifier(formula))
     if (fool) UnspecifiedFragment
@@ -136,16 +146,19 @@ object Fragments {
     else {
       if (hasNestedQuants) UnspecifiedFragment //TODO: Check for separation fragments, guarded fragments, etc.
       else {
-        // check for bernauys-schönfikel-ramsey-like classes
-        val (predicates, functions) = listPredicateandFunctionArities(formula)
-        PrefixFragment(prefixQuants, predicates, functions, hasEquality)
+        if (prefixQuants.isEmpty && !hasEquality) PropositionalFragment
+        else {
+          // check for bernauys-schönfikel-ramsey-like classes
+          val (predicates, functions) = listPredicateandFunctionArities(formula)
+          PrefixFragment(prefixQuants, predicates, functions, hasEquality)
+        }
       }
     }
   }
 
   // Returns (quantifier?, equality?, fool features?, non-classical?)
-  private def hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical(formula: TFF.Formula): (Boolean, Boolean, Boolean, Boolean) = hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical0(formula, false, false, false, false)
-  private def hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical0(formula: TFF.Formula, qAcc: Boolean, eqAcc: Boolean, foolAcc: Boolean, nclAcc: Boolean): (Boolean, Boolean, Boolean, Boolean) = {
+  private[this] final def hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical(formula: TFF.Formula): (Boolean, Boolean, Boolean, Boolean) = hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical0(formula, qAcc = false, eqAcc = false, foolAcc = false, nclAcc = false)
+  private[this] final def hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical0(formula: TFF.Formula, qAcc: Boolean, eqAcc: Boolean, foolAcc: Boolean, nclAcc: Boolean): (Boolean, Boolean, Boolean, Boolean) = {
     if (qAcc && eqAcc && foolAcc && nclAcc) (qAcc, eqAcc, foolAcc, nclAcc)
     else {
       import TPTP.TFF
@@ -187,7 +200,7 @@ object Fragments {
     }
   }
   // Returns (quantifier?, equality?)
-  private def hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical0(term: TPTP.TFF.Term, qAcc: Boolean, eqAcc: Boolean, foolAcc: Boolean, nclAcc: Boolean): (Boolean, Boolean, Boolean, Boolean) = {
+  private[this] final def hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical0(term: TPTP.TFF.Term, qAcc: Boolean, eqAcc: Boolean, foolAcc: Boolean, nclAcc: Boolean): (Boolean, Boolean, Boolean, Boolean) = {
     import TPTP.TFF
     if (qAcc && eqAcc && foolAcc && nclAcc) (qAcc, eqAcc, foolAcc, nclAcc)
     else {
@@ -206,11 +219,11 @@ object Fragments {
       }
     }
   }
-  private def listPredicateandFunctionArities(formula: TFF.Formula): (Seq[Int], Seq[Int]) = {
+  private[this] final def listPredicateandFunctionArities(formula: TFF.Formula): (Seq[Int], Seq[Int]) = {
     val (preds, funcs) = listPredicateandFunctionArities0(formula, Map.empty, Map.empty)
     (toAritySeq(preds), toAritySeq(funcs))
   }
-  private def listPredicateandFunctionArities0(formula: TFF.Formula, predAcc: Map[Int, Set[String]], funcAcc: Map[Int, Set[String]]): (Map[Int, Set[String]], Map[Int, Set[String]]) = {
+  private[this] final def listPredicateandFunctionArities0(formula: TFF.Formula, predAcc: Map[Int, Set[String]], funcAcc: Map[Int, Set[String]]): (Map[Int, Set[String]], Map[Int, Set[String]]) = {
     import TPTP.TFF
     formula match {
       case TFF.AtomicFormula(f, args) =>
@@ -243,7 +256,7 @@ object Fragments {
     }
   }
 
-  private def listPredicateandFunctionArities0(term: TFF.Term, predAcc: Map[Int, Set[String]], funcAcc: Map[Int, Set[String]]): (Map[Int, Set[String]], Map[Int, Set[String]]) = {
+  private[this] final def listPredicateandFunctionArities0(term: TFF.Term, predAcc: Map[Int, Set[String]], funcAcc: Map[Int, Set[String]]): (Map[Int, Set[String]], Map[Int, Set[String]]) = {
     import TPTP.TFF
     term match {
       case TFF.AtomicTerm(f, args) =>
@@ -258,13 +271,13 @@ object Fragments {
       case _ => (predAcc, funcAcc)
     }
   }
-  private def incArityCounter(map: Map[Int, Set[String]], symbol: String,  arity: Int): Map[Int, Set[String]] = {
+  private[this] final def incArityCounter(map: Map[Int, Set[String]], symbol: String,  arity: Int): Map[Int, Set[String]] = {
     if (map.isDefinedAt(arity)) {
       val symbols = map(arity)
       map + (arity -> (symbols + symbol))
     } else map + (arity -> Set(symbol))
   }
-  private def toAritySeq(arityMap: Map[Int, Set[String]]): Seq[Int] = {
+  private[this] final def toAritySeq(arityMap: Map[Int, Set[String]]): Seq[Int] = {
     if (arityMap.isEmpty) Seq.empty
     else {
       val maximalArity = arityMap.keySet.max
@@ -273,7 +286,7 @@ object Fragments {
   }
 
   @tailrec
-  private def stripPrefixQuantifier(formula: TPTP.TFF.Formula): TPTP.TFF.Formula = {
+  private[this] final def stripPrefixQuantifier(formula: TPTP.TFF.Formula): TPTP.TFF.Formula = {
     import TPTP.TFF
     formula match {
       case TFF.QuantifiedFormula(quantifier, _, body) if quantifier == TFF.! || quantifier == TFF.? =>
@@ -281,7 +294,7 @@ object Fragments {
       case _ => formula
     }
   }
-  @tailrec def collectPrefixQuantifier(formula: TPTP.TFF.Formula, accumulator: Seq[QuantifierType] = Seq.empty): Seq[QuantifierType] = {
+  @tailrec private[this] final def collectPrefixQuantifier(formula: TPTP.TFF.Formula, accumulator: Seq[QuantifierType] = Seq.empty): Seq[QuantifierType] = {
     import TPTP.TFF
     formula match {
       case TFF.QuantifiedFormula(quantifier, _, body) if quantifier == TFF.! || quantifier == TFF.? =>
