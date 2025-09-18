@@ -11,7 +11,7 @@ import java.nio.file.Path
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: String = "1.4.0"
+  final val version: String = "1.4.1"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
