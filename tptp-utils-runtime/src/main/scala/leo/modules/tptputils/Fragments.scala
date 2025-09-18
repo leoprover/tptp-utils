@@ -8,12 +8,18 @@ import scala.util.matching.Regex
 
 
 object Fragments {
+  /////////////////////////////
+  // individual fragments
+  ////////////////////////////
+  sealed abstract class QuantifierType
+  final case object E extends QuantifierType
+  final case object A extends QuantifierType
+
   sealed abstract class Fragment
   final case object PropositionalFragment extends Fragment
   final case class PrefixFragment(quantifierPrefix: Seq[QuantifierType], predicates: Seq[Int], functions: Seq[Int], equality: Boolean) extends Fragment
-  final case object UnspecifiedFragment extends Fragment
 
-  final def pretty(fragment: Fragment): String = {
+  final def prettyFragment(fragment: Fragment): String = {
     fragment match {
       case PropositionalFragment => "Propositional"
       case PrefixFragment(quantifierPrefix, predicates, functions, equality) =>
@@ -22,101 +28,149 @@ object Fragments {
         val functionsAsString = functions.mkString("[", ",", "]")
         val equalityAsString = if (equality) "=" else ""
         s"($quantifiersToString, $predicatesAsString, $functionsAsString)$equalityAsString"
-      case UnspecifiedFragment => "UnspecifiedFragment"
     }
   }
-
-  sealed abstract class QuantifierType
-  final case object E extends QuantifierType
-  final case object A extends QuantifierType
-
-
 
   sealed abstract class FragmentClass
   final case object PropositionalFragmentClass extends FragmentClass {
     override def toString: String = "Propositional"
   }
+  /** Relational first-order logic with equality with prefix quantifiers of the form E*A* */
   final case object BernaysSchoenfinkelRamseyFragmentClass extends FragmentClass {
     override def toString: String = "BernaysSchoenfinkelRamsey"
   }
-  final case object UnknownFragmentClass extends FragmentClass
+  /** Relational first-order logic without equality with only unary predicate symbols. */
+  final case object MonadicFirstOrderFragmentClass extends FragmentClass {
+    override def toString: String = "MonadicFirstOrder"
+  }
+  /** Relational first-order logic with equality with only unary predicate symbols, extension of MFO */
+  final case object LoewenheimFragmentClass extends FragmentClass {
+    override def toString: String = "Löwenheim"
+  }
+  /** First-order logic without equality with only unary predicate symbols and only unary function symbols, extension of MFO */
+  final case object LoebGurevichFragmentClass extends FragmentClass {
+    override def toString: String = "LöbGurevich"
+  }
+  /** Relational first-order logic without equality with prefix quantifiers of the form E*AAE* */
+  final case object GoedelKalmarSchuetteFragmentClass extends FragmentClass {
+    override def toString: String = "GödelKalmárSchütte"
+  }
+  /** Relational first-order logic without equality with prefix quantifiers of the form E*AE* */
+  final case object AckermannFragmentClass extends FragmentClass {
+    override def toString: String = "Ackermann"
+  }
+  /** first-order logic without equality with prefix quantifiers of the form E*AE*. Extension of Ackermann */
+  final case object GurevichMaslovOrevkov extends FragmentClass {
+    override def toString: String = "GurevichMaslovOrevkov"
+  }
+  final val knownClasses: Seq[FragmentClass] = Seq(PropositionalFragmentClass,
+    BernaysSchoenfinkelRamseyFragmentClass, MonadicFirstOrderFragmentClass,
+    LoewenheimFragmentClass, LoebGurevichFragmentClass, GoedelKalmarSchuetteFragmentClass,
+    AckermannFragmentClass, GurevichMaslovOrevkov)
 
-  final def getFragmentClassOfFragment(fragment: Fragment): FragmentClass = {
+  private[this] final def isSubFragmentClassOf(subFragmentClass: FragmentClass, fragmentClass: FragmentClass): Boolean = {
+    (subFragmentClass, fragmentClass) match {
+      case (PropositionalFragmentClass, _) => true
+      case (MonadicFirstOrderFragmentClass, LoewenheimFragmentClass) => true
+      case (MonadicFirstOrderFragmentClass, LoebGurevichFragmentClass) => true
+      case (GurevichMaslovOrevkov, AckermannFragmentClass) => true
+      case (a, b) if a == b => true
+      case _ => false
+    }
+  }
+  /////////////////////////////
+  // Map fragments to classes
+  ////////////////////////////
+  final def getFragmentClassesOfFragment(fragment: Fragment): Seq[FragmentClass] = {
+    var result: Seq[FragmentClass] =  Seq.empty
     fragment match {
-      case PropositionalFragment => PropositionalFragmentClass
+      case PropositionalFragment => result = result :+ PropositionalFragmentClass
       case PrefixFragment(quantifierPrefix, predicates, functions, equality) =>
         if (quantifiersMatchRegex(quantifierPrefix, "E*A*".r) && functions.length <= 1) // constants are allowed
-          BernaysSchoenfinkelRamseyFragmentClass
-        else UnknownFragmentClass
-      case UnspecifiedFragment => UnknownFragmentClass
+          result = result :+ BernaysSchoenfinkelRamseyFragmentClass
+        else if (quantifiersMatchRegex(quantifierPrefix, "E*AAE*".r) && functions.length <= 1 && !equality) // constants are allowed
+          result = result :+ GoedelKalmarSchuetteFragmentClass
+        else if (functions.length <= 1 && predicates.length <= 2 && !equality)
+          result = result :+ MonadicFirstOrderFragmentClass
+        else if (functions.length <= 1 && predicates.length <= 2 && equality)
+          result = result :+ LoewenheimFragmentClass
+        else if (functions.length <= 2 && predicates.length <= 2 && !equality)
+          result = result :+  LoebGurevichFragmentClass
+        else if (quantifiersMatchRegex(quantifierPrefix, "E*AE*".r) && functions.length <= 1 && !equality)
+          result = result :+  AckermannFragmentClass
+        else if (quantifiersMatchRegex(quantifierPrefix, "E*AE*".r) && !equality)
+          result = result :+ GurevichMaslovOrevkov
     }
+    result
   }
   private[this] final def quantifiersMatchRegex(quantifiers: Seq[QuantifierType], regex: Regex): Boolean = {
     val quantifiersToString = quantifiers.map { case E => "E" case A => "A" }.mkString
     regex.matches(quantifiersToString)
   }
 
-  final def decidableFragment(fragment: FragmentClass): Boolean = {
-    fragment match {
-      case PropositionalFragmentClass => true
-      case BernaysSchoenfinkelRamseyFragmentClass => true
-      case _ => false
-    }
-  }
-
-  final def apply(problem: TPTP.Problem): (TPTP.Problem, FragmentClass) = {
+  /////////////////////////////
+  // rest: search for fragments
+  ////////////////////////////
+  final def apply(problem: TPTP.Problem): (TPTP.Problem, Seq[FragmentClass]) = {
     val formulas = problem.formulas
     val formulasWithFragmentInfo = formulas.map { f =>
-      val fragment = apply(f)
-      (fragment._1, f.name -> fragment._2)
+      val fragments = apply(f)
+      (fragments._1, f.name -> fragments._2)
     }
     val comments = formulasWithFragmentInfo.map { info0 =>
       val info = info0._2
-      (info._1,  Seq(TPTP.Comment(TPTP.Comment.CommentFormat.LINE, TPTP.Comment.CommentType.NORMAL, pretty(info._2))))
+      (info._1,  Seq(TPTP.Comment(TPTP.Comment.CommentFormat.LINE, TPTP.Comment.CommentType.NORMAL, info._2.map(prettyFragment).mkString(","))))
     }.toMap
     val augmentedProblem = TPTP.Problem(problem.includes, formulasWithFragmentInfo.map(_._1), comments)
     val allFragments = formulasWithFragmentInfo.map(_._2).map(_._2)
     if (allFragments.isEmpty)
-      (augmentedProblem, UnknownFragmentClass)
+      (augmentedProblem, Seq.empty)
     else {
       val hd = allFragments.head
-      if (allFragments.forall(_ == hd)) (augmentedProblem, getFragmentClassOfFragment(hd))
-      else (augmentedProblem, UnknownFragmentClass)
+      val rest = allFragments.tail
+      val hdClasses = hd.flatMap(getFragmentClassesOfFragment)
+      val restClasses = rest.map(_.flatMap(getFragmentClassesOfFragment))
+      var problemFragmentClasses: Seq[FragmentClass] = Seq.empty
+      hdClasses.foreach { fragmentClass =>
+        if (restClasses.forall(_.exists(c => isSubFragmentClassOf(c, fragmentClass))))
+          problemFragmentClasses = problemFragmentClasses :+ fragmentClass
+      }
+      (augmentedProblem, problemFragmentClasses)
     }
   }
 
-  private[this] final def updateAnnotationWithFragment(annotation: TPTP.Annotations, fragment: Fragment): TPTP.Annotations = {
-    val fragmentClass = getFragmentClassOfFragment(fragment)
-    val annotationEntry = fragmentClass match {
-      case UnknownFragmentClass => TPTP.GeneralTerm(Seq.empty, None)
-      case _ => TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData("fragment", Seq(TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData(s"'${fragmentClass.toString}'", Seq.empty)), None)))), None)
+  private[this] final def updateAnnotationWithFragments(annotation: TPTP.Annotations, fragments: Seq[Fragment]): TPTP.Annotations = {
+    val fragmentClasses = fragments.flatMap(getFragmentClassesOfFragment)
+    val annotationEntry = fragmentClasses match {
+      case Seq() => Seq(TPTP.GeneralTerm(Seq.empty, None))
+      case _ => fragmentClasses.map(f => TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData("fragment", Seq(TPTP.GeneralTerm(Seq(TPTP.MetaFunctionData(s"'${f.toString}'", Seq.empty)), None)))), None) )
     }
     annotation match {
       case Some((gt, list)) => list match {
-        case Some(value) => Some((gt, Some(value :+ annotationEntry)))
-        case None => Some((gt, Some(Seq(annotationEntry))))
+        case Some(value) => Some((gt, Some(value ++ annotationEntry)))
+        case None => Some((gt, Some(annotationEntry)))
       }
-      case None => Some((TPTP.GeneralTerm(Seq.empty, Some(Seq(annotationEntry))), None))
+      case None => Some((TPTP.GeneralTerm(Seq.empty, Some(annotationEntry)), None))
     }
   }
 
-  final def apply(annotatedFormula: TPTP.AnnotatedFormula): (TPTP.AnnotatedFormula, Fragment) = {
+  final def apply(annotatedFormula: TPTP.AnnotatedFormula): (TPTP.AnnotatedFormula, Seq[Fragment]) = {
     annotatedFormula match {
       case TPTP.THFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
       case f@TPTP.TFFAnnotated(name, role, formula, annotation) =>
         val fragment = apply(f, implicitNormalization = true)
-        val updatedFormula = TPTP.TFFAnnotated(name, role, formula, updateAnnotationWithFragment(annotation, fragment))
+        val updatedFormula = TPTP.TFFAnnotated(name, role, formula, updateAnnotationWithFragments(annotation, fragment))
         (updatedFormula, fragment)
       case f@TPTP.FOFAnnotated(name, role, formula, annotation) =>
         val fragment = apply(f, implicitNormalization = true)
-        val updatedFormula = TPTP.FOFAnnotated(name, role, formula, updateAnnotationWithFragment(annotation, fragment))
+        val updatedFormula = TPTP.FOFAnnotated(name, role, formula, updateAnnotationWithFragments(annotation, fragment))
         (updatedFormula, fragment)
       case TPTP.TCFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
       case TPTP.CNFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
       case TPTP.TPIAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
     }
   }
-  final def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): Fragment = {
+  final def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): Seq[Fragment] = {
     import leo.datastructures.TPTP.TFF
     annotatedFormula.formula match {
       case TFF.Logical(formula) =>
@@ -128,32 +182,34 @@ object Fragments {
         (processedFormula.formula: @unchecked) match {
           case TFF.Logical(formula0) => analyzeTFFFormula(formula0)
         }
-      case _ => UnspecifiedFragment
+      case _ => Seq.empty
     }
   }
-  final def apply(annotatedFormula: TPTP.FOFAnnotated, implicitNormalization: Boolean): Fragment =
+  final def apply(annotatedFormula: TPTP.FOFAnnotated, implicitNormalization: Boolean): Seq[Fragment] =
     apply(SyntaxTransform.fofToTFF(annotatedFormula), implicitNormalization)
 
   private[this] final def tffQuantifierToQuantifierType(quantifier: TPTP.TFF.Quantifier): QuantifierType = (quantifier: @unchecked) match {
     case TFF.! => A
     case TFF.? => E
   }
-  private[this] final def analyzeTFFFormula(formula: TPTP.TFF.Formula): Fragment = {
+  private[this] final def analyzeTFFFormula(formula: TPTP.TFF.Formula): Seq[Fragment] = {
+    var result: Seq[Fragment] = Seq.empty
     val prefixQuants = collectPrefixQuantifier(formula)
     val (hasNestedQuants, hasEquality, fool, ncl) = hasQuantifierOrEqualityOrFOOLFeaturesOrNonclassical(stripPrefixQuantifier(formula))
-    if (fool) UnspecifiedFragment
-    else if (ncl) UnspecifiedFragment
+    if (fool || ncl) {;} /* skip */
     else {
-      if (hasNestedQuants) UnspecifiedFragment //TODO: Check for separation fragments, guarded fragments, etc.
-      else {
-        if (prefixQuants.isEmpty && !hasEquality) PropositionalFragment
-        else {
-          // check for bernauys-schönfikel-ramsey-like classes
-          val (predicates, functions) = listPredicateandFunctionArities(formula)
-          PrefixFragment(prefixQuants, predicates, functions, hasEquality)
-        }
+      // here we are in the classical FOL world.
+      if (hasNestedQuants) {
+        //TODO: Check for separation fragments, guarded fragments, etc.
+      } else {
+        // it's always a prefix class at this point
+        val (predicates, functions) = listPredicateandFunctionArities(formula)
+        result = result :+ PrefixFragment(prefixQuants, predicates, functions, hasEquality)
+        // a more specialized prefix class: propositional
+        if (prefixQuants.isEmpty && !hasEquality) result = result :+ PropositionalFragment
       }
     }
+    result
   }
 
   // Returns (quantifier?, equality?, fool features?, non-classical?)

@@ -25,9 +25,9 @@ Current features include:
 and prints its result to stdout (or some output file), as follows:
 
 ```
-usage: tptputils [parameters] <command> [command parameters] <problem file>
+usage: tptputils [options] <command> [command parameters] <problem file>
 
-  <command> is the command to be executed (see below). <problem file> can be
+ <command> is the command to be executed (see below). <problem file> can be
  either a file name or '-' (without quotes) for stdin. If <output file> is
  specified, the result is written to <output file>, otherwise to stdout.
 
@@ -69,19 +69,25 @@ usage: tptputils [parameters] <command> [command parameters] <problem file>
                Valid parameters are (more to come):
                --prenex (for prenex normal form)
 
-  fragment      Analyze the input whether it is member of some known fragment of FOL.
-               Works only for FOF/TFF inputs, and only for inputs with a single
-               annotated formula.
-               Can recognize: Bernay-Schönfinkel-Ramsey, propositional (without equality).
-               (that's it, more to come.).
+  fragment     Analyze the input whether it is member of some known fragment of FOL.
+               Works only for FOF/TFF inputs. Fragments are noted inside the annotation
+               of the annotated formulas. Can recognize:
+               Propositional,
+               BernaysSchoenfinkelRamsey,
+               MonadicFirstOrder,
+               Löwenheim,
+               LöbGurevich,
+               GödelKalmárSchütte,
+               Ackermann,
+               GurevichMaslovOrevkov
 
  Options:
    --tstp      Enable TSTP-compatible output: The output in <output file>
                (or stdout) will start with a SZS status value and the output
                will be wrapped within SZS BEGIN and SZS END block delimiters.
                Disabled by default.
-               
-   --recursive Recursively parse all includes contained in the input file.
+
+  --recursive  Recursively parse all includes contained in the input file.
                This might make it necessary to set the TPTP environment variable
                if TPTP-specific includes need to be resolved.
 
