@@ -75,9 +75,7 @@ object TPTPUtilsApp {
           case Fragment =>
             val parsedInput = parseTPTPFile(infile.get)
             val (resultProblem, overallFragmentClass) = tptputils.Fragments.apply(parsedInput)
-
-            generateSZSResult(tptpProblemToString(resultProblem), "Success", "ListOfFormulae", withPrefix = true) ++
-              generateSZSResult(overallFragmentClass.map(_.toString).mkString("\n"), "Fragment", "FreeText", withPrefix = false)
+            generateSZSResult(tptpProblemToString(resultProblem), overallFragmentClass.map(_.toString.prependedAll("Fragment-")).mkString(" & "), "ListOfFormulae", withPrefix = true)
         }
         outfile.get.print(result)
         outfile.get.flush()
