@@ -45,15 +45,15 @@ object Fragments {
   }
   /** Relational first-order logic with equality with only unary predicate symbols, extension of MFO */
   final case object LoewenheimFragmentClass extends FragmentClass {
-    override def toString: String = "Löwenheim"
+    override def toString: String = "Loewenheim"
   }
   /** First-order logic without equality with only unary predicate symbols and only unary function symbols, extension of MFO */
   final case object LoebGurevichFragmentClass extends FragmentClass {
-    override def toString: String = "LöbGurevich"
+    override def toString: String = "LoebGurevich"
   }
   /** Relational first-order logic without equality with prefix quantifiers of the form E*AAE* */
   final case object GoedelKalmarSchuetteFragmentClass extends FragmentClass {
-    override def toString: String = "GödelKalmárSchütte"
+    override def toString: String = "GoedelKalmarSchuette"
   }
   /** Relational first-order logic without equality with prefix quantifiers of the form E*AE* */
   final case object AckermannFragmentClass extends FragmentClass {
