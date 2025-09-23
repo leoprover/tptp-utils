@@ -74,13 +74,17 @@ object TPTPUtilsApp {
             generateSZSResult("status", "Success", tptpProblemToString(result), "ListOfFormulae", withPrefix = true)
           case Fragment =>
             val parsedInput = parseTPTPFile(infile.get)
+            val includeMessage: String =
+              if (parsedInput.includes.nonEmpty)
+                "Problem contains include directives. Use --recursive to parse them as well. Results may be inaccurate otherwise."
+              else ""
             val (resultProblem, overallFragmentClass) = tptputils.Fragments.apply(parsedInput)
             if (overallFragmentClass.nonEmpty) {
-              generateSZSResult("fragment", overallFragmentClass.head.toString, "", "", withPrefix = true) ++
-                overallFragmentClass.tail.map(fc => generateSZSResult("fragment", fc.toString, "", "", withPrefix = false)).mkString("") ++
+              generateSZSResult("fragment", overallFragmentClass.head.toString, "", "", withPrefix = true, includeMessage) ++
+                overallFragmentClass.tail.map(fc => generateSZSResult("fragment", fc.toString, "", "", withPrefix = false, includeMessage)).mkString("") ++
                 generateSZSOutput(tptpProblemToString(resultProblem), "ListOfFormulae")
             } else {
-
+              generateSZSResult("fragment", "UnknownFragment", "", "", withPrefix = true, includeMessage)
             }
         }
         outfile.get.print(result)
