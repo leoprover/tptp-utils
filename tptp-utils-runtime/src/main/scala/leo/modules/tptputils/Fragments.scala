@@ -122,7 +122,7 @@ object Fragments {
       (info._1,  Seq(TPTP.Comment(TPTP.Comment.CommentFormat.LINE, TPTP.Comment.CommentType.NORMAL, info._2.map(prettyFragment).mkString(","))))
     }.toMap
     val augmentedProblem = TPTP.Problem(problem.includes, formulasWithFragmentInfo.map(_._1), comments)
-    val allFragments = formulasWithFragmentInfo.map(_._2).map(_._2)
+    val allFragments = formulasWithFragmentInfo.filter(_._1.role != "type").map(_._2).map(_._2)
     if (allFragments.isEmpty)
       (augmentedProblem, Seq.empty)
     else {
