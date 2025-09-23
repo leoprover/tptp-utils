@@ -84,7 +84,7 @@ object TPTPUtilsApp {
                 overallFragmentClass.tail.map(fc => generateSZSResult("fragment", fc.toString, "", "", withPrefix = false, includeMessage)).mkString("") ++
                 generateSZSOutput(tptpProblemToString(resultProblem), "ListOfFormulae")
             } else {
-              generateSZSResult("fragment", "UnknownFragment", "", "", withPrefix = true, includeMessage)
+              generateSZSResult("fragment", "None", "", "", withPrefix = true, includeMessage)
             }
         }
         outfile.get.print(result)
