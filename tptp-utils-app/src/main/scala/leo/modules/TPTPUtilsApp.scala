@@ -80,11 +80,11 @@ object TPTPUtilsApp {
               else ""
             val (resultProblem, overallFragmentClass) = tptputils.Fragments.apply(parsedInput)
             if (overallFragmentClass.nonEmpty) {
-              generateSZSResult("fragment", overallFragmentClass.head.toString, "", "", withPrefix = true, includeMessage) ++
-                overallFragmentClass.tail.map(fc => generateSZSResult("fragment", fc.toString, "", "", withPrefix = false, includeMessage)).mkString("") ++
+              generateSZSResult("status fragment", overallFragmentClass.head.toString, "", "", withPrefix = true, includeMessage) ++
+                overallFragmentClass.tail.map(fc => generateSZSResult("status fragment", fc.toString, "", "", withPrefix = false, includeMessage)).mkString("") ++
                 generateSZSOutput(tptpProblemToString(resultProblem), "ListOfFormulae")
             } else {
-              generateSZSResult("fragment", "None", "", "", withPrefix = true, includeMessage)
+              generateSZSResult("status fragment", "None", "", "", withPrefix = true, includeMessage)
             }
         }
         outfile.get.print(result)
