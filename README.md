@@ -16,6 +16,10 @@ Current features include:
  - Syntax checking *(validate that the input file is syntactically well-formed)*
  - Reparsing *(Read the input file and print an abstract syntax tree in JSON format)*
  - Dialect transformation *(Translate problem from TPTP dialect A to TPTP dialect B)*
+ - Normal form computations *(Convert problem to some normal form)*
+ - Decidable FOL fragment detection *(Analyze whether formulas in the TPTP file come from a known decidable FOL fragment)*
+
+Experimental features include:
  - Linting *(Read and check the problem file for suspicious content, malformed logic specification, etc.)* **Work in progress!**
  - Importing (fragments of) LegalRuleML files to [normative TPTP](https://github.com/leoprover/logic-embedding) **Work in progress!**
  
