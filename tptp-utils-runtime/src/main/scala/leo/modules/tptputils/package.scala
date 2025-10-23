@@ -2,10 +2,55 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.AnnotatedFormula.FormulaType
+import leo.modules.input.TPTPParser
+
+import java.io.FileNotFoundException
+import java.nio.file.Path
+import scala.io.Source
 
 package object tptputils {
   class TPTPTransformException(message: String) extends RuntimeException(message)
   class UnsupportedInputException(message: String) extends RuntimeException(message)
+
+  final def parseTPTPFileWithoutIncludes(path: Path): TPTP.Problem = {
+    if (path.toString == "-") {
+      TPTPParser.problem(Source.stdin)
+    } else {
+      TPTPParser.problem(Source.fromFile(path.toFile))
+    }
+  }
+  final def parseTPTPFileWithIncludes(path: Path, tptpHomeDirectory: Option[String]): TPTP.Problem = {
+    val includesAlreadyRead: collection.mutable.Set[Path] = collection.mutable.Set.empty
+
+    def parseTPTPFile0(file: Source, filepath: Path): TPTP.Problem = {
+      includesAlreadyRead.addOne(filepath.normalize())
+      val problem = TPTPParser.problem(file)
+      val recursivelyParsedIncludes = problem.includes.map { case (include, _) =>
+        val includePath = filepath.getParent.resolve(include)
+        if (includePath.toFile.exists()) {
+          parseTPTPFile0(Source.fromFile(includePath.toFile), includePath)
+        } else {
+          tptpHomeDirectory match {
+            case Some(dir) =>
+              val defaultincludePath = Path.of(dir).resolve(include)
+              parseTPTPFile0(Source.fromFile(defaultincludePath.toFile), defaultincludePath)
+            case None => throw new FileNotFoundException(s"Include '${filepath.toString}' not found. Did you forget to define the TPTP environment variable?")
+          }
+        }
+      }
+      recursivelyParsedIncludes.foldRight(problem) { case (parsedInclude, acc) =>
+        TPTP.Problem(Seq.empty, parsedInclude.formulas ++ acc.formulas, parsedInclude.formulaComments concat acc.formulaComments)
+      }
+    }
+
+    if (path.toString == "-") {
+      parseTPTPFile0(Source.stdin, Path.of(sys.props("user.dir")))
+    } else {
+      parseTPTPFile0(Source.fromFile(path.toFile), path)
+    }
+  }
+
+
   /** Returns true iff `role` does not contain a subrole (i.e., role followed by dash followed by general term). */
   final def isSimpleRole(role: String): Boolean = !role.contains("-")
   /** Returns true iff `role` does contain a subrole (i.e., role followed by dash followed by general term). */

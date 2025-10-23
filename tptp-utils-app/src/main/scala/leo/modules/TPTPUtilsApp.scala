@@ -2,10 +2,9 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.Problem
-import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform}
+import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform, parseTPTPFileWithIncludes, parseTPTPFileWithoutIncludes}
 import leo.modules.input.TPTPParser
 
-import scala.io.Source
 import java.io.{File, FileNotFoundException, PrintWriter}
 import java.nio.file.Path
 
@@ -133,46 +132,8 @@ object TPTPUtilsApp {
   }
 
   private[this] def parseTPTPFile(path: Path): TPTP.Problem = {
-    if (recursiveParsing) parseTPTPFileWithIncludes(path) else parseTPTPFileWithoutIncludes(path)
+    if (recursiveParsing) parseTPTPFileWithIncludes(path, tptpHomeDirectory) else parseTPTPFileWithoutIncludes(path)
   }
-  private[this] def parseTPTPFileWithoutIncludes(path: Path): TPTP.Problem = {
-    if (path.toString == "-") {
-      TPTPParser.problem(Source.stdin)
-    } else {
-      TPTPParser.problem(Source.fromFile(path.toFile))
-    }
-  }
-  private[this] def parseTPTPFileWithIncludes(path: Path): TPTP.Problem = {
-    val includesAlreadyRead: collection.mutable.Set[Path] = collection.mutable.Set.empty
-
-    def parseTPTPFile0(file: Source, filepath: Path): TPTP.Problem = {
-      includesAlreadyRead.addOne(filepath.normalize())
-      val problem = TPTPParser.problem(file)
-      val recursivelyParsedIncludes = problem.includes.map { case (include, _) =>
-        val includePath = filepath.getParent.resolve(include)
-        if (includePath.toFile.exists()) {
-          parseTPTPFile0(Source.fromFile(includePath.toFile), includePath)
-        } else {
-          tptpHomeDirectory match {
-            case Some(dir) =>
-              val defaultincludePath = Path.of(dir).resolve(include)
-              parseTPTPFile0(Source.fromFile(defaultincludePath.toFile), defaultincludePath)
-            case None => throw new FileNotFoundException(s"Include '${filepath.toString}' not found. Did you forget to define the TPTP environment variable?")
-          }
-        }
-      }
-      recursivelyParsedIncludes.foldRight(problem) { case (parsedInclude, acc) =>
-        TPTP.Problem(Seq.empty, parsedInclude.formulas ++ acc.formulas, parsedInclude.formulaComments concat acc.formulaComments)
-      }
-    }
-
-    if (path.toString == "-") {
-      parseTPTPFile0(Source.stdin, Path.of(sys.props("user.dir")))
-    } else {
-      parseTPTPFile0(Source.fromFile(path.toFile), path)
-    }
-  }
-
 
   private[this] final def tptpProblemToString(problem: Problem): String = {
     val sb: StringBuilder = new StringBuilder()
@@ -290,7 +251,7 @@ object TPTPUtilsApp {
         |""".stripMargin)
   }
 
-  protected sealed abstract class Command
+  private sealed abstract class Command
   final private case object Parse extends Command
   final private case object Reparse extends Command
   final private case class  Transform(goal: TPTP.AnnotatedFormula.FormulaType.FormulaType) extends Command
