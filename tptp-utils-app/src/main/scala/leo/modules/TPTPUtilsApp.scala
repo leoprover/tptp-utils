@@ -1,8 +1,7 @@
 package leo.modules
 
 import leo.datastructures.TPTP
-import leo.datastructures.TPTP.Problem
-import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform, parseTPTPFileWithIncludes, parseTPTPFileWithoutIncludes}
+import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform, parseTPTPFileWithIncludes, parseTPTPFileWithoutIncludes, tptpProblemToString}
 import leo.modules.input.TPTPParser
 
 import java.io.{File, FileNotFoundException, PrintWriter}
@@ -133,19 +132,6 @@ object TPTPUtilsApp {
 
   private[this] def parseTPTPFile(path: Path): TPTP.Problem = {
     if (recursiveParsing) parseTPTPFileWithIncludes(path, tptpHomeDirectory) else parseTPTPFileWithoutIncludes(path)
-  }
-
-  private[this] final def tptpProblemToString(problem: Problem): String = {
-    val sb: StringBuilder = new StringBuilder()
-    problem.includes foreach { case (file, (selection, _)) =>
-      if (selection.isEmpty) sb.append(s"include('$file').\n")
-      else sb.append(s"include('$file', ${selection.mkString("[",",","]")}).\n")
-    }
-    problem.formulas foreach { f =>
-      sb.append(s"${f.pretty}\n")
-    }
-    if (problem.includes.nonEmpty || problem.formulas.nonEmpty) sb.dropRight(1).toString()
-    else sb.toString()
   }
 
   private final def generateSZSResult(szsWord: String, szsStatus: String, result: String, szsDatatype: String, withPrefix: Boolean, extraTSTPMessage: String = "") = {

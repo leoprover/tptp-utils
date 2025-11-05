@@ -2,6 +2,7 @@ package leo.modules
 
 import leo.datastructures.TPTP
 import leo.datastructures.TPTP.AnnotatedFormula.FormulaType
+import leo.datastructures.TPTP.Problem
 import leo.modules.input.TPTPParser
 
 import java.io.FileNotFoundException
@@ -11,6 +12,19 @@ import scala.io.Source
 package object tptputils {
   class TPTPTransformException(message: String) extends RuntimeException(message)
   class UnsupportedInputException(message: String) extends RuntimeException(message)
+
+  final def tptpProblemToString(problem: Problem): String = {
+    val sb: StringBuilder = new StringBuilder()
+    problem.includes foreach { case (file, (selection, _)) =>
+      if (selection.isEmpty) sb.append(s"include('$file').\n")
+      else sb.append(s"include('$file', ${selection.mkString("[",",","]")}).\n")
+    }
+    problem.formulas foreach { f =>
+      sb.append(s"${f.pretty}\n")
+    }
+    if (problem.includes.nonEmpty || problem.formulas.nonEmpty) sb.dropRight(1).toString()
+    else sb.toString()
+  }
 
   final def parseTPTPFileWithoutIncludes(path: Path): TPTP.Problem = {
     if (path.toString == "-") {
