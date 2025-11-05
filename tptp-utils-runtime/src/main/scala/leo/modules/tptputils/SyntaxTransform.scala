@@ -81,7 +81,12 @@ object SyntaxTransform {
                              problem: TPTP.Problem,
                              addMissingTypeDeclarations: Boolean = true): TPTP.Problem = {
     var transformedFormulas: Seq[TPTP.AnnotatedFormula] = Vector.empty
-    for (formula <- problem.formulas) {
+    val (specFormulas, otherFormulas) = problem.formulas.partition(_.role == "logic") //split
+
+    for (formula <- specFormulas) {
+      transformedFormulas = transformedFormulas :+ transformAnnotatedFormula(goalLanguage, formula)
+    }
+    for (formula <- otherFormulas) {
       transformedFormulas = transformedFormulas :+ transformAnnotatedFormula(goalLanguage, formula)
     }
     val extraDeclarations: Seq[TPTP.AnnotatedFormula] = goalLanguage match {
