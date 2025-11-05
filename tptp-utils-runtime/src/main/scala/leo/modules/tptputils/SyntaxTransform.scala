@@ -81,10 +81,11 @@ object SyntaxTransform {
                              problem: TPTP.Problem,
                              addMissingTypeDeclarations: Boolean = true): TPTP.Problem = {
     var transformedFormulas: Seq[TPTP.AnnotatedFormula] = Vector.empty
+    var transformedSpecFormulas: Seq[TPTP.AnnotatedFormula] = Vector.empty
     val (specFormulas, otherFormulas) = problem.formulas.partition(_.role == "logic") //split
 
     for (formula <- specFormulas) {
-      transformedFormulas = transformedFormulas :+ transformAnnotatedFormula(goalLanguage, formula)
+      transformedSpecFormulas = transformedSpecFormulas :+ transformAnnotatedFormula(goalLanguage, formula)
     }
     for (formula <- otherFormulas) {
       transformedFormulas = transformedFormulas :+ transformAnnotatedFormula(goalLanguage, formula)
@@ -94,7 +95,7 @@ object SyntaxTransform {
         generateMissingTypeDeclarations(goalLanguage, problem.formulas)
       case _ => Seq.empty
     }
-    TPTP.Problem(problem.includes, extraDeclarations ++ transformedFormulas, problem.formulaComments)
+    TPTP.Problem(problem.includes, transformedSpecFormulas ++ extraDeclarations ++ transformedFormulas, problem.formulaComments)
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////
