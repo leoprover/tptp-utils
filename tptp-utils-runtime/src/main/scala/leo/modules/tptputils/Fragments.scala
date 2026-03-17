@@ -8,6 +8,10 @@ import scala.util.matching.Regex
 
 
 object Fragments {
+  /** Thrown when some procedure of [[Fragments]] fails. Quite generic,
+   * but there should be a helpful error message within the exception. */
+  class UnsupportedFragmentInputException(message: String) extends RuntimeException(message)
+
   /////////////////////////////
   // individual fragments
   ////////////////////////////
@@ -156,7 +160,7 @@ object Fragments {
 
   final def apply(annotatedFormula: TPTP.AnnotatedFormula): (TPTP.AnnotatedFormula, Seq[Fragment]) = {
     annotatedFormula match {
-      case TPTP.THFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
+      case TPTP.THFAnnotated(_, _, _, _) => throw new UnsupportedFragmentInputException("Fragment detection only supported for TFF and FOF inputs.")
       case f@TPTP.TFFAnnotated(name, role, formula, annotation) =>
         val fragment = apply(f, implicitNormalization = true)
         val updatedFormula = TPTP.TFFAnnotated(name, role, formula, updateAnnotationWithFragments(annotation, fragment))
@@ -165,9 +169,9 @@ object Fragments {
         val fragment = apply(f, implicitNormalization = true)
         val updatedFormula = TPTP.FOFAnnotated(name, role, formula, updateAnnotationWithFragments(annotation, fragment))
         (updatedFormula, fragment)
-      case TPTP.TCFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
-      case TPTP.CNFAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
-      case TPTP.TPIAnnotated(_, _, _, _) => throw new UnsupportedInputException("Fragment detection only supported for TFF and FOF inputs.")
+      case TPTP.TCFAnnotated(_, _, _, _) => throw new UnsupportedFragmentInputException("Fragment detection only supported for TFF and FOF inputs.")
+      case TPTP.CNFAnnotated(_, _, _, _) => throw new UnsupportedFragmentInputException("Fragment detection only supported for TFF and FOF inputs.")
+      case TPTP.TPIAnnotated(_, _, _, _) => throw new UnsupportedFragmentInputException("Fragment detection only supported for TFF and FOF inputs.")
     }
   }
   final def apply(annotatedFormula: TPTP.TFFAnnotated, implicitNormalization: Boolean): Seq[Fragment] = {

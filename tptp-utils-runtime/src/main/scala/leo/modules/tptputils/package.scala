@@ -10,8 +10,7 @@ import java.nio.file.Path
 import scala.io.Source
 
 package object tptputils {
-  class TPTPTransformException(message: String) extends RuntimeException(message)
-  class UnsupportedInputException(message: String) extends RuntimeException(message)
+
 
   final def tptpProblemToString(problem: Problem): String = {
     val sb: StringBuilder = new StringBuilder()

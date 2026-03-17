@@ -4,6 +4,10 @@ import leo.datastructures.TPTP
 import leo.datastructures.TPTP.{CNF, TFF}
 
 object SyntaxTransform {
+  /** Thrown when some procedure of [[SyntaxTransform]] fails. Quite generic,
+   * but there should be a helpful error message within the exception. */
+  class TPTPTransformException(message: String) extends RuntimeException(message)
+
   @inline final def tffToTHF(tff: TPTP.TFFAnnotated): TPTP.THFAnnotated =
     TPTP.THFAnnotated(tff.name, tff.role, tffStatementToTHF(tff.formula), tff.annotations)
   @inline final def tffToTHF(tffs: Seq[TPTP.TFFAnnotated]): Seq[TPTP.THFAnnotated] = tffs.map(tffToTHF)

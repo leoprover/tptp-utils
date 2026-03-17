@@ -1,7 +1,7 @@
 package leo.modules
 
 import leo.datastructures.TPTP
-import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform, parseTPTPFileWithIncludes, parseTPTPFileWithoutIncludes, tptpProblemToString}
+import leo.modules.tptputils.{Linter, Normalization, ParseTree, SyntaxDowngrade, SyntaxTransform, parseTPTPFileWithIncludes, parseTPTPFileWithoutIncludes, tptpProblemToString, Fragments}
 import leo.modules.input.TPTPParser
 
 import java.io.{File, FileNotFoundException, PrintWriter}
@@ -9,7 +9,7 @@ import java.nio.file.Path
 
 object TPTPUtilsApp {
   final val name: String = "tptputils"
-  final val version: String = "1.4.3"
+  final val version: String = "1.4.4"
 
   private[this] var inputFileName = ""
   private[this] var outputFileName: Option[String] = None
@@ -95,8 +95,10 @@ object TPTPUtilsApp {
           error = Some(s"File cannot be found or is not readable/writable: ${e.getMessage}")
         case e: TPTPParser.TPTPParseException =>
           error = Some(s"Input file could not be parsed, parse error at ${e.line}:${e.offset}: ${e.getMessage}")
-        case e: leo.modules.tptputils.UnsupportedInputException =>
-          error = Some(s"Input is inappropriate for the operation: ${e.getMessage}")
+        case e: Fragments.UnsupportedFragmentInputException =>
+          error = Some(s"Input is inappropriate for the 'fragment' command: ${e.getMessage}")
+        case e: SyntaxTransform.TPTPTransformException =>
+          error = Some(s"Syntax transform failed: ${e.getMessage}")
         case e: Throwable =>
           error = Some(s"Unexpected error: ${e.getMessage} (${e.printStackTrace()}). This is considered an implementation error; please report this!")
       } finally {

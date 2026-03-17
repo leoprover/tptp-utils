@@ -4,6 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import leo.modules.input.{TPTPParser => Parser}
 import leo.modules.input.TPTPParser.TPTPParseException
 import leo.datastructures.TPTP
+import leo.modules.tptputils.SyntaxTransform.TPTPTransformException
 
 class SyntaxTransformTest extends AnyFunSuite {
   test("test1") {
