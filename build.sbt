@@ -1,11 +1,11 @@
 lazy val commonSettings = Seq(
   organization := "org.leo",
-  scalaVersion := "2.13.16",
+  scalaVersion := "2.13.18",
   scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
     ),
-  version := "1.4.3",
+  version := "1.4.4",
   licenses += "BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause"),
   libraryDependencies += "io.github.leoprover" %% "scala-tptp-parser" % "1.7.3",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.19" % "test"
@@ -38,6 +38,10 @@ lazy val tptpUtilsApp = (project in file("tptp-utils-app"))
     name := "tptp-utils-app",
     Compile / mainClass := Some("leo.modules.TPTPUtilsApp"),
     assembly / mainClass := Some("leo.modules.TPTPUtilsApp"),
+    nativeImageOptions += s"-H:ReflectionConfigurationFiles=${target.value / "native-image-configs" / "reflect-config.json"}",
+    nativeImageOptions += s"-H:ConfigurationFileDirectories=${target.value / "native-image-configs" }",
+    nativeImageOptions +="-H:+JNI",
     assembly / test := {},
     assembly / assemblyJarName := s"${name.value}-${version.value}.jar",
 	).dependsOn(tptpUtilsRuntime)
+	.enablePlugins(NativeImagePlugin)
