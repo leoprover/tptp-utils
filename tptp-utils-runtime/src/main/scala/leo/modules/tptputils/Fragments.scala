@@ -182,7 +182,7 @@ object Fragments {
         val annotatedFormula0 = if (annotatedFormula.role == "conjecture") {
           TPTP.TFFAnnotated(annotatedFormula.name, "negated_conjecture", TFF.Logical(TFF.UnaryFormula(TFF.~, formula)), annotatedFormula.annotations)
         } else annotatedFormula
-        val processedFormula = if (implicitNormalization) Normalization.prenexNormalizeTFF(annotatedFormula0) else annotatedFormula0
+        val processedFormula = if (implicitNormalization) Normalization.PrenexNormalform.normalizeTFFAnnotatedFormula(annotatedFormula0) else annotatedFormula0
         (processedFormula.formula: @unchecked) match {
           case TFF.Logical(formula0) => analyzeTFFFormula(formula0)
         }
