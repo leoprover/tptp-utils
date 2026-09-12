@@ -241,7 +241,7 @@ object SyntaxTransform {
           case FOF.? => TFF.?
           case FOF.Epsilon => TFF.Epsilon
         }
-        TFF.QuantifiedFormula(quantifier0, variableList.map(x => (x, None)), fofLogicFormulaToTFF(body))
+        TFF.QuantifiedFormula(quantifier0, variableList.map(x => (x, Some(TFF.AtomicType("$i", Seq.empty)))), fofLogicFormulaToTFF(body))
       case FOF.UnaryFormula(connective, body) =>
         val connective0 = connective match {
           case FOF.~ => TFF.~

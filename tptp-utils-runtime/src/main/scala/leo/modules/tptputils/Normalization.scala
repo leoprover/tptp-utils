@@ -6,7 +6,7 @@ import leo.datastructures.TPTP.THF.Type
 object Normalization {
   sealed abstract class Normalform
   final case object PrenexNF extends Normalform
-  final case object NegationNF extends Normalform
+//  final case object NegationNF extends Normalform
 
   final def apply(normalform: Normalform, input: TPTP.Problem): TPTP.Problem = normalform match {
     case PrenexNF => PrenexNormalform.apply(input)
@@ -44,6 +44,27 @@ object Normalization {
       SyntaxDowngrade.thfToFOF(normalizedTHF)
     }
 
+    /////////////// FOF
+    def normalizeFOFFormula(formula: TPTP.FOF.Formula): TPTP.FOF.Formula = {
+      val result = normalizeFOFAnnotatedFormula(TPTP.FOFAnnotated("", "", TPTP.FOF.Logical(formula), None))
+      result.formula match {
+        case TPTP.FOF.Logical(formula) => formula
+      }
+    }
+
+    /////////////// TFF
+    def normalizeTFFFormula(formula: TPTP.TFF.Formula): TPTP.TFF.Formula = {
+      val result = normalizeTFFAnnotatedFormula(TPTP.TFFAnnotated("", "", TPTP.TFF.Logical(formula), None))
+      (result.formula : @unchecked) match {
+        case TPTP.TFF.Logical(formula) => formula
+      }
+    }
+
+    /////////////// THF
+    def normalizeTHFFormula(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
+      val normalized = normalizeTHFFormula0(formula)
+      contractQuantifier(normalized)
+    }
     private def invertTHFQuantifier(quantifier: TPTP.THF.Quantifier): TPTP.THF.Quantifier = {
       import TPTP.THF
       quantifier match {
@@ -51,10 +72,6 @@ object Normalization {
         case THF.? => THF.!
         case _ => quantifier
       }
-    }
-    def normalizeTHFFormula(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
-      val normalized = normalizeTHFFormula0(formula)
-      contractQuantifier(normalized)
     }
     private def normalizeTHFFormula0(formula: TPTP.THF.Formula): TPTP.THF.Formula = {
       import TPTP.THF
@@ -93,6 +110,7 @@ object Normalization {
                     THF.QuantifiedFormula(invertTHFQuantifier(quantifier), variableList, normalizeTHFFormula0(THF.UnaryFormula(THF.~, body)))
                   case _ => THF.UnaryFormula(connective, normalizedBody)
                 }
+              case THF.UnaryFormula(THF.~, body) => body
               case _ => THF.UnaryFormula(connective, normalizedBody)
             }
         }
