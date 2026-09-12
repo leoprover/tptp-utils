@@ -1,0 +1,30 @@
+[
+{
+  "name":"java.lang.ClassValue"
+},
+{
+  "name":"java.lang.Object",
+  "allDeclaredFields":true
+},
+{
+  "name":"java.lang.String[]"
+},
+{
+  "name":"java.lang.invoke.VarHandle"
+},
+{
+  "name":"java.lang.reflect.Field[]"
+},
+{
+  "name":"java.lang.reflect.Method[]"
+},
+{
+  "name":"leo.datastructures.TPTP$AnnotatedFormula$FormulaType$",
+  "allDeclaredFields":true,
+  "allPublicMethods":true
+},
+{
+  "name":"scala.Enumeration",
+  "allDeclaredFields":true
+}
+]

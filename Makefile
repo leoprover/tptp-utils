@@ -18,3 +18,8 @@ clean:
 		rm -rf target/
 		rm -rf tptp-utils-app/target/
 		rm -rf tptp-utils-runtime/target/
+
+native:
+		@echo Creating native image with graalvm
+		sbt nativeImage
+		mv tptp-utils-app/target/native-image/tptp-utils-app bin/tptp-utils-native
