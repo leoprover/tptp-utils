@@ -1,0 +1,21 @@
+# Run tests (slightly modified from https://www.scala-sbt.org/1.x/docs/GitHub-Actions-with-sbt.html)
+name: Test
+on:
+  pull_request:
+  push:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Setup JDK
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 17
+        cache: sbt
+    - name: Setup sbt launcher
+      uses: sbt/setup-sbt@v1
+    - name: Build and Test
+      run: sbt -v -Dfile.encoding=UTF-8 +test
