@@ -3,10 +3,10 @@ default: all
 
 all: 
 		@echo Building tptp-utils ...
-		sbt assembly
+		sbt +assembly
 		mkdir bin -p
-		cp tptp-utils-app/target/scala-2.13/tptp-utils-app-*.jar bin/.
-		cat ./contrib/exec_dummy bin/tptp-utils-app-*.jar > bin/tptp-utils
+		cp tptp-utils-app/target/scala-3.*/tptp-utils-app-*.jar bin/tptp-utils.jar
+		cat ./contrib/exec_dummy bin/tptp-utils.jar > bin/tptp-utils
 		chmod +x bin/tptp-utils
 
 install:
