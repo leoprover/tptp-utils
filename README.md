@@ -3,11 +3,13 @@ Library for TPTP-related utility services
 
 `tptp-utils` may be referenced as [![DOI](https://zenodo.org/badge/435301165.svg)](https://zenodo.org/badge/latestdoi/435301165).
 
+Runtime linrary also available at Maven central: [![Maven Central](https://img.shields.io/maven-central/v/io.github.leoprover/tptp-utils-runtime_2.13.svg?label=Maven%20Central)](https://central.sonatype.com/search?q=tptp-utils-runtime&namespace=io.github.leoprover)
+
 -------------------------------
 
-`tptp-utils` is an application for pre- and post-processing automated theorem proving input files (so-called problem files)
+`tptp-utils` is an application and library for pre- and post-processing automated theorem proving input files (so-called problem files)
 given in the [TPTP](http://tptp.org/) (*Thousands of Problems for Theorem Proving*) syntax standard.
-It is written in Scala and freely available as open-source software.
+It is written in Scala (Scala 2.13.X and Scala 3.9.X) and freely available as open-source software.
 
 Please check the TPTP web page for an introduction to the different language
 dialects (THF, TFF, FOF, CNF, ...) for automated theorem provers.
@@ -132,10 +134,6 @@ If there is a syntax error, the output will look similar to the following:
 
 Using TSTP output is important when, e.g., exchanging this information between reasoning systems.
 
-### As library
-
-`tptp-utils` may also be included as library to your Scala software projects.
-
 ## Installation
 
 You can use the pre-built executable .jar file (in the release section), without
@@ -143,6 +141,32 @@ any other installation steps.
 
 You may build `tptp-utils` from source: This requires a JDK and the scala build tool `sbt` in
 a reasonably current version.
+
+
+## Usage as runtime library (Scala 2.13.X and Scala.3.9.X)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.leoprover/tptp-utils-runtime_2.13.svg?label=Maven%20Central)](https://central.sonatype.com/search?q=tptp-utils-runtime&namespace=io.github.leoprover)
+
+`tptp-utils` is available on [Maven Central (for Scala 2.13.X)](https://central.sonatype.com/artifact/io.github.leoprover/tptp-utils-runtime_2.13) resp. [Maven Central (for Scala 3.9.X)](https://central.sonatype.com/artifact/io.github.leoprover/tptp-utils-runtime_3).
+
+### sbt
+
+In order to include `tptp-utils-runtime` into your project via SBT, just add the following dependency to your `build.sbt`:
+```scala
+libraryDependencies += "io.github.leoprover" %% "tptp-utils-runtime" % "1.5.0"
+```
+
+### Maven
+
+In order to include `tptp-utils-runtime` into your project via Maven, just add the following dependency (shown for Scala 2.13.X, replace "_2.13" with "_3" for Scala 3.9.X):
+```xml
+<dependency>
+  <groupId>io.github.leoprover</groupId>
+  <artifactId>tptp-utils-runtime_2.13</artifactId>
+  <version>1.5.0</version>
+</dependency>
+```
+
+
 
 ## License
 `tptp-utils` is published under MIT license, see `LICENSE` file for details.
